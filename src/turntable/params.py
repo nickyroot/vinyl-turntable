@@ -45,20 +45,20 @@ PALETTE = {
 
 @dataclass(frozen=True)
 class Plinth:
-    """Two-tier cabinet: die-cast alloy top on a moulded rubber base.
+    """One solid slab, faceted the way a LaCie Mobile Drive is.
 
-    Technics isolate the motor, the arm and the dust cover separately, each
-    up to its own mounting point, which is why the deck survives standing
-    next to a PA stack.
+    The top face is a perfect rectangle with sharp edges and nothing is
+    taken off it. Every facet is underneath: a bevel tucks each bottom edge
+    in, and each corner loses an inclined facet that starts as a point at
+    the top corner and widens to `corner_cut` at the bottom face.
     """
 
     length: float = 453.0
     depth: float = 360.0
-    top_plate: float = 15.0
-    base: float = 41.0
-    base_inset: float = 5.0         # rubber base steps in from the alloy edge
-    corner_radius: float = 16.0
-    top_chamfer: float = 1.2
+    height: float = 56.0
+    bevel_height: float = 24.0      # how far up the wall the bottom bevel reaches
+    bevel_inset: float = 11.0       # how far in it tucks at the bottom face
+    corner_cut: float = 56.0        # corner facet width at the bottom, along each edge
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ class Foot:
 
     radius: float = 22.0
     height: float = 26.0
-    inset: float = 36.0
+    inset: float = 50.0             # clear of the bevels and corner facets
     collar: float = 5.0             # the gold band around the base
 
 
@@ -200,6 +200,7 @@ class DustCover:
     wall: float = 3.0
     height: float = 80.0
     margin: float = 5.0
+    corner_radius: float = 21.0
     hinge_radius: float = 8.0
     hinge_length: float = 36.0
     open_angle: float = 0.0         # degrees; 0 = closed
@@ -240,8 +241,8 @@ class TurntableParams:
 
     @property
     def plinth_top(self) -> float:
-        """Z of the top plate's upper face, with the feet on z = 0."""
-        return self.foot.height + self.plinth.base + self.plinth.top_plate
+        """Z of the chassis top face, with the feet on z = 0."""
+        return self.foot.height + self.plinth.height
 
     @property
     def spindle(self) -> tuple[float, float]:

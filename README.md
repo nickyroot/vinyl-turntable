@@ -57,13 +57,22 @@ What is worth copying, and what this model tries to capture:
 The S-bend of the arm is not styling either: it lets the headshell sit at
 the offset angle while the counterweight stays on the pivot axis.
 
+## The chassis
+
+The cabinet is one solid slab, faceted after the LaCie Mobile Drive. It
+starts as a box and loses eight flat slices. A bevel tucks each bottom edge
+under, and each corner loses an inclined facet that begins as a point at
+the top corner and widens to `corner_cut` at the bottom face. Nothing comes
+off the top, which stays a perfect 453 x 360 rectangle with sharp edges, so
+in plan the deck is a clean rectangle and all the geometry is underneath.
+
 ## What is modelled
 
-319 solids across seven groups, which are also the viewer's layers:
+317 solids across seven groups, which are also the viewer's layers:
 
 | Group | Parts |
 | --- | --- |
-| `cabinet` | alloy top plate, rubber base, insulator feet, phono leads |
+| `cabinet` | faceted chassis slab, insulator feet, phono leads |
 | `controls` | start/stop, 33 and 45, power, strobe lamp, pitch fader, target light, 45 adapter |
 | `drive` | bearing hub, stator plate and coils, spindle |
 | `platter` | rotor magnet, platter, damping ring, strobe dots, mat |
@@ -128,6 +137,7 @@ Some things worth trying:
 | --- | --- |
 | Bigger platter | `Platter.radius` |
 | Taller or slimmer plinth | `Plinth.height`, `Plinth.corner_radius` |
+| Chassis facets | `Plinth.bevel_height`, `bevel_inset`, `corner_cut` |
 | Reshape the S-bend | `Tonearm.s_curve` |
 | Different arm geometry | `Tonearm.effective_length`, `pivot_to_spindle`, `offset_angle` |
 | Move a control | `Controls.*_at` |
@@ -181,6 +191,8 @@ model rather than the mesh.
 - the cartridge stays within about 3 degrees of the groove tangent across
   the side, which is what catches a headshell kinked the wrong way
 - the rotor magnet keeps its air gap from the stator coils
+- the chassis top face is still a four-sided 453 x 360 rectangle, so no
+  facet has crept onto it
 - no two solids occupy the same space, apart from an allowlist of press
   fits
 

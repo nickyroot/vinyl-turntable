@@ -24,13 +24,16 @@ from build123d import (
     Compound,
     Cone,
     Cylinder,
+    Keep,
     Plane,
     Pos,
     Rot,
     Shape,
     Spline,
+    Vector,
     chamfer,
     fillet,
+    split,
     sweep,
 )
 
@@ -52,33 +55,55 @@ def finish(shape: Shape, label: str, key: str) -> Shape:
 # ------------------------------------------------------------------ cabinet
 
 
+def _trim(body: Shape, a, b, c, keep) -> Shape:
+    """Slice `body` with the plane through a, b and c, keeping `keep`'s side."""
+    a, b, c = Vector(*a), Vector(*b), Vector(*c)
+    normal = (b - a).cross(c - a).normalized()
+    if normal.dot(Vector(*keep) - a) > 0:
+        normal = -normal  # point the normal at the material coming off
+    return split(body, bisect_by=Plane(origin=a, z_dir=normal), keep=Keep.BOTTOM)
+
+
 def plinth(p: TurntableParams) -> Shape:
-    """Die-cast alloy top plate on a heavy moulded rubber base.
+    """A box with eight flat slices taken off it.
 
-    Two separate parts in reality and here: the alloy carries the motor and
-    the arm, the rubber kills what the alloy passes on.
+    Four bevels along the bottom edges, then four inclined corner facets,
+    each a plane through a top corner and two points `corner_cut` back
+    along the bottom edges. Because every cut is a plane, the facets meet
+    in straight creases and the top face is untouched.
     """
-    s, f = p.plinth, p.foot
-    out = []
+    s = p.plinth
+    z0, z1 = p.foot.height, p.plinth_top
+    x, y = s.length / 2, s.depth / 2
+    zb = z0 + s.bevel_height
+    inset, cut = s.bevel_inset, s.corner_cut
+    centre = (0.0, 0.0, (z0 + z1) / 2)
 
-    base = Box(s.length - 2 * s.base_inset, s.depth - 2 * s.base_inset, s.base, align=BOTTOM)
-    base = fillet(base.edges().filter_by(Axis.Z), s.corner_radius - s.base_inset)
-    out.append(finish(Pos(Z=f.height) * base, "rubber_base", "base"))
+    body = Pos(Z=z0) * Box(s.length, s.depth, s.height, align=BOTTOM)
+    for side in (-1, 1):
+        front_back = ((-x, side * y, zb), (x, side * y, zb), (0, side * (y - inset), z0))
+        left_right = ((side * x, -y, zb), (side * x, y, zb), (side * (x - inset), 0, z0))
+        body = _trim(body, *front_back, centre)
+        body = _trim(body, *left_right, centre)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            body = _trim(
+                body,
+                (sx * x, sy * y, z1),
+                (sx * (x - cut), sy * y, z0),
+                (sx * x, sy * (y - cut), z0),
+                centre,
+            )
 
-    plate = Box(s.length, s.depth, s.top_plate, align=BOTTOM)
-    plate = fillet(plate.edges().filter_by(Axis.Z), s.corner_radius)
-    plate = chamfer(plate.faces().sort_by(Axis.Z)[-1].edges(), s.top_chamfer)
-
-    # Bores for the bearing and the arm pillar, and the two sunken wells.
-    plate -= Pos(*p.spindle, -1) * Cylinder(p.drive.hub_radius, s.top_plate + 2, align=BOTTOM)
-    plate -= Pos(*p.controls.adapter_at, s.top_plate - 4) * Cylinder(
+    # Bores and wells for the parts that sit in the top face.
+    body -= Pos(*p.spindle, z1 - 15) * Cylinder(p.drive.hub_radius, 16, align=BOTTOM)
+    body -= Pos(*p.controls.adapter_at, z1 - 4) * Cylinder(
         p.controls.adapter_radius + 2, 6, align=BOTTOM
     )
     slot_w, slot_l = p.controls.pitch_slot
-    plate -= Pos(*p.controls.pitch_at, s.top_plate - 5) * Box(slot_w, slot_l, 7, align=BOTTOM)
+    body -= Pos(*p.controls.pitch_at, z1 - 5) * Box(slot_w, slot_l, 7, align=BOTTOM)
 
-    out.append(finish(Pos(Z=f.height + s.base) * plate, "top_plate", "top_plate"))
-    return Compound(children=out, label="cabinet")
+    return finish(body, "chassis", "top_plate")
 
 
 def feet(p: TurntableParams) -> Shape:
@@ -99,14 +124,15 @@ def feet(p: TurntableParams) -> Shape:
 
 
 def rear_panel(p: TurntableParams) -> Shape:
-    """Captive phono leads and the earthing post, out of the back."""
-    y = p.plinth.depth / 2 - p.plinth.base_inset
-    z = p.foot.height + p.plinth.base / 2
-    out = []
+    """Captive phono leads and the earthing post, out of the back wall.
 
-    boss = Box(78, 6, 24, align=(Align.CENTER, Align.MIN, Align.CENTER))
-    boss = fillet(boss.edges().filter_by(Axis.Y), 3)
-    out.append(finish(Pos(96, y, z) * boss, "outlet_boss", "base"))
+    They leave from the vertical band above the bevel, so the slab keeps
+    its clean underside.
+    """
+    s = p.plinth
+    y = s.depth / 2
+    z = p.foot.height + s.bevel_height + (s.height - s.bevel_height) / 2
+    out = []
 
     for i, dx in enumerate((74, 118)):
         lead = Rot(X=-90) * Cylinder(4.0, 26, align=BOTTOM)
@@ -573,11 +599,11 @@ def dust_cover(p: TurntableParams) -> Shape:
     z0 = p.plinth_top
 
     outer = Box(ol, od, c.height, align=BOTTOM)
-    outer = fillet(outer.edges().filter_by(Axis.Z), s.corner_radius + c.margin)
+    outer = fillet(outer.edges().filter_by(Axis.Z), c.corner_radius)
     outer = fillet(outer.faces().sort_by(Axis.Z)[-1].edges(), 7)
 
     inner = Box(ol - 2 * c.wall, od - 2 * c.wall, c.height, align=BOTTOM)
-    inner = fillet(inner.edges().filter_by(Axis.Z), s.corner_radius + c.margin - c.wall)
+    inner = fillet(inner.edges().filter_by(Axis.Z), c.corner_radius - c.wall)
     shell = outer - Pos(Z=-c.wall) * inner
 
     shell -= Pos(0, od / 2, c.height / 2) * Box(ol - 80, 40, c.height)

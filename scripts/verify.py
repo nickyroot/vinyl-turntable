@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import replace
 from math import hypot
 
-from build123d import Shape
+from build123d import Axis, Shape
 
 from turntable import DEFAULT, build
 from turntable.parts import dust_cover
@@ -52,9 +52,6 @@ ALLOWED_CLASHES = {
     frozenset(("rest_post", "rest_cradle")),
     frozenset(("rest_cradle", "rest_clamp")),
     frozenset(("record", "record_label")),
-    frozenset(("outlet_boss", "phono_lead_1")),
-    frozenset(("outlet_boss", "phono_lead_2")),
-    frozenset(("outlet_boss", "earth_post")),
     frozenset(("phono_lead_1", "phono_plug_1")),
     frozenset(("phono_lead_2", "phono_plug_2")),
     frozenset(("stator_plate", "stator_coils")),
@@ -67,8 +64,6 @@ ALLOWED_CLASHES = {
     frozenset(("platter", "strobe_dots")),
     frozenset(("cover_shell", "hinge_1")),
     frozenset(("cover_shell", "hinge_2")),
-    frozenset(("rubber_base", "mains_lead")),
-    frozenset(("rubber_base", "outlet_boss")),
 }
 
 CLASH_VOLUME = 1.0  # mm^3, enough to ignore coincident faces
@@ -81,8 +76,6 @@ OUTSIDE_COVER = (
     "phono_",
     "earth_post",
     "mains_lead",
-    "outlet_boss",
-    "rubber_base",
 )
 
 
@@ -173,6 +166,16 @@ def run_checks(quiet: bool = False) -> int:
     checks.append(("record sits on mat", flat["record"].bounding_box().min.Z, mat.max.Z))
 
     checks.append(("platter top", flat["platter"].bounding_box().max.Z, p.platter_top))
+
+    # The chassis top face has to stay a perfect rectangle: every facet is
+    # meant to be below it, so it should still have exactly four sides.
+    chassis = flat["chassis"]
+    top = chassis.faces().sort_by(Axis.Z)[-1].outer_wire()
+    tb = top.bounding_box()
+    checks.append(("chassis top face sides", len(top.edges()), 4))
+    checks.append(("chassis top face length", tb.size.X, p.plinth.length))
+    checks.append(("chassis top face depth", tb.size.Y, p.plinth.depth))
+    checks.append(("chassis is one solid", len(chassis.solids()), 1))
 
     failures = 0
     for name, got, want in checks:
