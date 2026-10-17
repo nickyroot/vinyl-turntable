@@ -1,32 +1,75 @@
-# Vinyl turntable
+# Direct-drive turntable
 
-A belt-drive turntable modelled parametrically in
-[build123d](https://build123d.readthedocs.io), exported to glTF, and viewed in
-the browser.
+A quartz-locked direct-drive turntable, modelled parametrically in
+[build123d](https://build123d.readthedocs.io), exported to glTF, and viewed
+in the browser. The starting point is the Technics SL-1210 MK2.
 
-Every dimension lives in one dataclass, so changing the platter diameter or the
-tonearm's effective length reshapes the model and the viewer follows.
+Every dimension lives in one dataclass, so changing the platter diameter or
+the tonearm's effective length reshapes the model and the viewer follows.
 
-**[View it →](https://nickyroot.github.io/vinyl-turntable/)**
+**[View it &rarr;](https://nickyroot.github.io/vinyl-turntable/)**
 
-## What's modelled
+## The deck it is based on
 
-46 solids across six groups, which are also the viewer's layers:
+The SL-1200/1210 MK2 is the turntable that accidentally became a musical
+instrument. Technics designed it for speed accuracy; DJs found that what
+makes a deck accurate also makes it playable. The numbers below come from
+the Technics service data, and the model is built to them.
+
+| | |
+| --- | --- |
+| Cabinet | 453 x 360 mm, 162 mm high with the cover |
+| Platter | 332 mm die-cast aluminium, 2 kg with the mat |
+| Drive | Quartz phase-locked, brushless DC, direct |
+| Torque | 1.5 kg-cm starting, 0.7 s to 33 rpm |
+| Pitch | +/- 8 % slide fader |
+| Arm | Universal S-shape, gimbal, 230 mm effective |
+| Alignment | 15 mm overhang, 22 deg offset, 215 mm pivot to spindle |
+| Tracking error | +0 deg 32 min inner to +2 deg 32 min outer |
+
+What is worth copying, and what this model tries to capture:
+
+- **The platter is the motor.** The rotor magnet rides on the platter
+  underside and runs outside the stator coils on the chassis. No belt to
+  stretch, no idler to go hard, and nothing between the motor and the
+  record but the spindle bearing. `drive` and `platter` in the model are
+  two halves of one machine, which is why the rotor lives in the platter
+  group and turns with it.
+- **Torque, and symmetrical braking.** 1.5 kg-cm gets it to speed in a
+  quarter of a turn, and the electronic brake stops it just as briskly.
+  Designed so stylus drag could not slow it; it turned out to be what lets
+  a DJ hold a record by hand and have it return to pitch.
+- **Quartz phase lock.** Speed referenced to a crystal rather than to the
+  mains, sensing the whole circumference of the shaft rather than one
+  point on it. This made the strobe redundant in 1979 and Technics kept
+  the dots anyway, because people wanted to see the speed as well as
+  trust it.
+- **Isolation in layers.** A die-cast alloy top plate carries the motor
+  and the arm; a heavy moulded rubber base carries the alloy; spring-and-
+  rubber feet carry the lot. Motor, arm and cover are each isolated
+  separately up to their own mounting points, which is why the deck works
+  standing next to a PA stack.
+- **The pitch fader.** The MK2 swapped a rotary knob for a 100 mm linear
+  fader. A small change that turned a speed trim into a performance
+  control.
+- **A removable headshell**, so a cartridge swap takes seconds.
+
+The S-bend of the arm is not styling either: it lets the headshell sit at
+the offset angle while the counterweight stays on the pivot axis.
+
+## What is modelled
+
+319 solids across seven groups, which are also the viewer's layers:
 
 | Group | Parts |
 | --- | --- |
-| `chassis` | plinth, feet, phono outputs, DC inlet, speed switch, 45 adapter |
-| `drive` | motor, pulley, belt, bearing housing |
-| `platter` | sub-platter, platter, mat, spindle |
-| `arm` | tonearm, headshell, cartridge, counterweight, anti-skate, rest |
+| `cabinet` | alloy top plate, rubber base, insulator feet, phono leads |
+| `controls` | start/stop, 33 and 45, power, strobe lamp, pitch fader, target light, 45 adapter |
+| `drive` | bearing hub, stator plate and coils, spindle |
+| `platter` | rotor magnet, platter, damping ring, strobe dots, mat |
+| `arm` | arm board, pillar, VTA collar, gimbal, S-tube, headshell, cartridge, counterweight, anti-skate, rest |
 | `record` | 12-inch record and label |
-| `cover` | acrylic dust cover and hinges |
-
-The tonearm follows real alignment geometry: 239 mm effective length, 222 mm
-pivot to spindle, 17 mm overhang at a 23.1 degree headshell offset. The arm is
-modelled sitting on the lead-in groove, and `turntable.tracking` solves the
-rotation that puts the stylus on any groove radius — which is what drives the
-viewer's playback animation.
+| `cover` | dust cover and hinges |
 
 ## Getting started
 
@@ -85,7 +128,10 @@ Some things worth trying:
 | --- | --- |
 | Bigger platter | `Platter.radius` |
 | Taller or slimmer plinth | `Plinth.height`, `Plinth.corner_radius` |
+| Reshape the S-bend | `Tonearm.s_curve` |
 | Different arm geometry | `Tonearm.effective_length`, `pivot_to_spindle`, `offset_angle` |
+| Move a control | `Controls.*_at` |
+| Strobe dot density | `Platter.strobe_per_row`, `strobe_rows` |
 | Move the arm round the deck | `TurntableParams.arm_bearing` |
 | Open the dust cover | `DustCover.open_angle` — try `62` |
 | Colours and materials | `PALETTE` at the top of the file |
@@ -132,12 +178,17 @@ model rather than the mesh.
 - the stylus touches the record surface, rather than floating above it
 - pivot-to-stylus equals the effective length, and the stylus sits on the
   lead-in groove
-- the belt, the sub-platter groove and the motor pulley groove share a plane
-- no two solids occupy the same space, apart from an allowlist of press fits
+- the cartridge stays within about 3 degrees of the groove tangent across
+  the side, which is what catches a headshell kinked the wrong way
+- the rotor magnet keeps its air gap from the stator coils
+- no two solids occupy the same space, apart from an allowlist of press
+  fits
 
-That last one is the useful one. It caught the motor pulley passing up through
-the record, and the sub-platter sitting on top of the platter instead of under
-it — both invisible in a quick render.
+The last two are the useful ones. The clash check caught the rotor and the
+stator occupying the same millimetres, which is the sort of thing a render
+hides completely. The tracking error check is the reason the headshell
+offset is handed correctly: flip it and the error goes from 2.7 degrees to
+46, which no amount of looking at the model would have told you.
 
 ## Viewer
 
@@ -161,7 +212,7 @@ src/turntable/
   params.py      every dimension, and the derived stack
   parts.py       one function per part, positioned in the assembly frame
   assembly.py    the groups
-  tracking.py    where the arm sits for a given groove radius
+  tracking.py    arm position and tracking error for a given groove
 scripts/
   watch.py          rebuild on save and serve the viewer
   export_model.py   GLB for the web, STEP and STL for CAD

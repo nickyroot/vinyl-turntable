@@ -2,59 +2,88 @@
 """Sanity checks on the built model.
 
 These are the things that are easy to get wrong and hard to spot in a
-render: the stylus has to touch the record, the arm has to measure up to its
-alignment numbers, the belt has to run in both grooves, and nothing should
-poke out through the dust cover.
+render: the stylus has to touch the record, the arm has to measure up to
+its alignment numbers, the rotor has to sit over the stator without
+touching it, and nothing should poke out through the dust cover.
+
+The tracking error check is the one that earns its keep on this deck. It
+compares the modelled cartridge against the figures Technics publish, so
+kinking the headshell the wrong way shows up as a number rather than as a
+render that looks vaguely fine.
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from math import hypot
 
 from build123d import Shape
 
 from turntable import DEFAULT, build
-from turntable.parts import belt_plane
+from turntable.parts import dust_cover
+from turntable.tracking import as_minutes, tracking_error
+
+TOL = 0.25
 
 # Pairs that are meant to share space: press fits, shafts through bores and
-# parts that are modelled as sitting inside one another.
+# parts modelled as sitting inside one another.
 ALLOWED_CLASHES = {
-    frozenset(("spindle", "sub_platter")),
-    frozenset(("spindle", "bearing_housing")),
-    frozenset(("motor_shaft", "motor_pulley")),
-    frozenset(("motor_shaft", "motor_body")),
-    frozenset(("arm_post", "arm_collar")),
-    frozenset(("arm_post", "arm_base")),
-    frozenset(("arm_tube", "arm_yoke")),
-    frozenset(("arm_tube", "counterweight")),
-    frozenset(("counterweight", "vta_nut")),
-    frozenset(("arm_tube", "headshell")),
+    frozenset(("spindle", "bearing_hub")),
+    frozenset(("spindle", "rotor_magnet")),
+    frozenset(("arm_pillar", "arm_board")),
+    frozenset(("arm_pillar", "vta_collar")),
+    frozenset(("arm_pillar", "vta_lock")),
+    frozenset(("arm_board", "vta_lock")),
+    frozenset(("arm_board", "antiskate_dial")),
+    frozenset(("arm_board", "rest_post")),
+    frozenset(("arm_tube", "gimbal_yoke")),
+    frozenset(("arm_stub", "gimbal_yoke")),
+    frozenset(("arm_stub", "counterweight")),
+    frozenset(("arm_stub", "arm_tube")),
+    frozenset(("counterweight", "stylus_force_dial")),
+    frozenset(("arm_tube", "headshell_collar")),
+    frozenset(("headshell_collar", "headshell")),
     frozenset(("headshell", "finger_lift")),
     frozenset(("headshell", "cartridge")),
     frozenset(("cartridge", "cantilever")),
     frozenset(("cantilever", "stylus")),
+    frozenset(("gimbal_yoke", "gimbal_pin_1")),
+    frozenset(("gimbal_yoke", "gimbal_pin_2")),
     frozenset(("rest_post", "rest_cradle")),
+    frozenset(("rest_cradle", "rest_clamp")),
     frozenset(("record", "record_label")),
-    frozenset(("rca_1", "rca_pin_1")),
-    frozenset(("rca_2", "rca_pin_2")),
-    frozenset(("output_plate", "rca_1")),
-    frozenset(("output_plate", "rca_2")),
-    frozenset(("output_plate", "ground_post")),
-    frozenset(("switch_plate", "button_1")),
-    frozenset(("switch_plate", "button_2")),
-    frozenset(("antiskate_arm", "arm_tube")),
-    frozenset(("antiskate_arm", "antiskate_weight")),
-    frozenset(("antiskate_arm", "arm_yoke")),
-    frozenset(("arm_tube", "vta_nut")),
-    frozenset(("output_plate", "rca_pin_1")),
-    frozenset(("output_plate", "rca_pin_2")),
+    frozenset(("outlet_boss", "phono_lead_1")),
+    frozenset(("outlet_boss", "phono_lead_2")),
+    frozenset(("outlet_boss", "earth_post")),
+    frozenset(("phono_lead_1", "phono_plug_1")),
+    frozenset(("phono_lead_2", "phono_plug_2")),
+    frozenset(("stator_plate", "stator_coils")),
+    frozenset(("bearing_hub", "stator_coils")),
+    frozenset(("arm_stub", "stylus_force_dial")),
+    frozenset(("pitch_fader", "pitch_rail")),
+    frozenset(("spindle", "stator_plate")),
+    frozenset(("target_light", "target_lens")),
+    frozenset(("platter", "platter_damping")),
+    frozenset(("platter", "strobe_dots")),
     frozenset(("cover_shell", "hinge_1")),
     frozenset(("cover_shell", "hinge_2")),
+    frozenset(("rubber_base", "mains_lead")),
+    frozenset(("rubber_base", "outlet_boss")),
 }
 
 CLASH_VOLUME = 1.0  # mm^3, enough to ignore coincident faces
 
-TOL = 0.25
+# Parts that live outside the cover by design.
+OUTSIDE_COVER = (
+    "foot_",
+    "cover",
+    "hinge",
+    "phono_",
+    "earth_post",
+    "mains_lead",
+    "outlet_boss",
+    "rubber_base",
+)
 
 
 def walk(node: Shape, prefix: str = "") -> dict[str, Shape]:
@@ -73,17 +102,18 @@ def walk(node: Shape, prefix: str = "") -> dict[str, Shape]:
 def clashes(flat: dict[str, Shape], quiet: bool = False) -> int:
     """Flag solids that overlap when they have no business doing so.
 
-    Bounding boxes come first because a real boolean on every pair of 46
-    solids is far more work than it is worth.
+    Bounding boxes are computed once up front: asking OCCT for them inside
+    the pair loop turns a quick check into a very slow one.
     """
     items = sorted(flat.items())
+    boxes = {name: shape.bounding_box() for name, shape in items}
     found = 0
     for i, (name_a, a) in enumerate(items):
-        box_a = a.bounding_box()
+        box_a = boxes[name_a]
         for name_b, b in items[i + 1 :]:
             if frozenset((name_a, name_b)) in ALLOWED_CLASHES:
                 continue
-            box_b = b.bounding_box()
+            box_b = boxes[name_b]
             if (
                 box_a.max.X < box_b.min.X or box_b.max.X < box_a.min.X
                 or box_a.max.Y < box_b.min.Y or box_b.max.Y < box_a.min.Y
@@ -92,14 +122,14 @@ def clashes(flat: dict[str, Shape], quiet: bool = False) -> int:
                 continue
             try:
                 overlap = (a & b).volume
-            except Exception as exc:  # a boolean that OCCT refuses is not a clash
+            except Exception as exc:  # a boolean OCCT refuses is not a clash
                 print(f"  note  could not test {name_a} against {name_b}: {exc}")
                 continue
             if overlap > CLASH_VOLUME:
                 print(f"  FAIL  {name_a} clashes with {name_b} ({overlap:.0f} mm3)")
                 found += 1
     if not found and not quiet:
-        print(f"  ok    no clashes among {len(items)} solids")
+        print(f"  ok    no clashes among {len(items)} parts")
     return found
 
 
@@ -108,11 +138,7 @@ def main() -> int:
 
 
 def run_checks(quiet: bool = False) -> int:
-    """Run every check and return how many failed.
-
-    Returns a count rather than printing and exiting so the watcher can call
-    it in-process after a rebuild.
-    """
+    """Run every check and return how many failed."""
     say = (lambda *a: None) if quiet else print
     p = DEFAULT
     model = build(p)
@@ -136,16 +162,17 @@ def run_checks(quiet: bool = False) -> int:
         )
     )
 
-    belt = flat["drive_belt"].bounding_box()
-    checks.append(("belt centre", (belt.min.Z + belt.max.Z) / 2, belt_plane(p)))
-    pulley = flat["motor_pulley"].bounding_box()
-    checks.append(("pulley groove centre", (pulley.min.Z + pulley.max.Z) / 2, belt_plane(p)))
-
-    sub = flat["sub_platter"].bounding_box()
-    checks.append(("sub-platter groove centre", (sub.min.Z + sub.max.Z) / 2, belt_plane(p)))
+    # The platter carries the rotor magnet and it runs outside the stator
+    # coils, so what matters is the radial air gap, not a vertical one.
+    d = p.drive
+    coil_outer = (d.stator_radius - 9) + 6.5
+    gap = (d.rotor_radius - d.rotor_wall) - coil_outer
+    checks.append(("motor air gap", round(gap, 2), 3.5))
 
     mat = flat["platter_mat"].bounding_box()
     checks.append(("record sits on mat", flat["record"].bounding_box().min.Z, mat.max.Z))
+
+    checks.append(("platter top", flat["platter"].bounding_box().max.Z, p.platter_top))
 
     failures = 0
     for name, got, want in checks:
@@ -154,14 +181,26 @@ def run_checks(quiet: bool = False) -> int:
         line = f"  {'ok  ' if ok else 'FAIL'}  {name:26s} {got:8.2f}  expected {want:8.2f}"
         say(line) if ok else print(line)
 
-    # Containment: nothing outside the dust cover, feet flat on z = 0.
-    cover = flat["cover_shell"].bounding_box()
-    inside = [
-        (n, s)
-        for n, s in flat.items()
-        if not n.startswith(("cover", "hinge")) and not n.startswith("foot")
-    ]
-    for name, shape in inside:
+    # Tracking error: Technics quote +0d32m inner to +2d32m outer, so the
+    # modelled cartridge should stay inside about 3 degrees across the side.
+    worst = 0.0
+    for radius in (p.record.lead_out_radius, 90.0, 120.0, p.lead_in_radius):
+        error = tracking_error(p, radius)
+        worst = max(worst, abs(error))
+        say(f"  ok    tracking error at r{radius:5.1f}   {as_minutes(error)}")
+    if worst > 3.0:
+        print(f"  FAIL  tracking error reaches {worst:.2f} deg; headshell offset is wrong way")
+        failures += 1
+    else:
+        say(f"  ok    worst tracking error      {worst:8.2f}  within 3.00")
+
+    # Containment: measure against a closed cover, otherwise raising it
+    # lifts the ceiling out of the way and the check tests nothing.
+    shut = replace(p, cover=replace(p.cover, open_angle=0.0))
+    cover = dust_cover(shut).bounding_box()
+    for name, shape in flat.items():
+        if name.startswith(OUTSIDE_COVER):
+            continue
         b = shape.bounding_box()
         if b.max.Z > cover.max.Z or b.min.X < cover.min.X or b.max.X > cover.max.X:
             print(f"  FAIL  {name} pokes out of the dust cover")

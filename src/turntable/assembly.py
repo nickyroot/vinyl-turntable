@@ -10,14 +10,14 @@ from . import parts
 from .params import DEFAULT, TurntableParams
 
 # Group name -> builder. The groups become the top level of the GLB scene,
-# which is what the web viewer's layer toggles switch on and off.
-# The grouping is chosen so the viewer can animate whole groups: everything
-# in "platter" turns with the spindle, everything in "record" turns with it,
-# and the parts that stay put (the 45 adapter, the arm rest) live elsewhere.
+# and the viewer's layer toggles. Everything that turns with the spindle is
+# in "platter", including the rotor magnet, because on a direct drive deck
+# the platter really is half the motor.
 GROUPS: dict[str, list[Callable[[TurntableParams], Shape]]] = {
-    "chassis": [parts.plinth, parts.feet, parts.rear_panel, parts.speed_switch, parts.puck],
-    "drive": [parts.motor, parts.belt, parts.bearing_housing],
-    "platter": [parts.sub_platter, parts.platter, parts.mat, parts.spindle],
+    "cabinet": [parts.plinth, parts.feet, parts.rear_panel],
+    "controls": [parts.controls, parts.target_light, parts.adapter],
+    "drive": [parts.direct_drive, parts.spindle],
+    "platter": [parts.rotor, parts.platter, parts.platter_damping, parts.strobe_dots, parts.mat],
     "arm": [parts.tonearm, parts.arm_rest],
     "record": [parts.record],
     "cover": [parts.dust_cover],

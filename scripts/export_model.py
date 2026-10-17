@@ -19,7 +19,7 @@ from pygltflib import GLTF2
 from turntable import DEFAULT, build
 from turntable.assembly import GROUPS
 from turntable.params import PALETTE
-from turntable.tracking import playable_sweep
+from turntable.tracking import as_minutes, playable_sweep, tracking_error
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_MODELS = ROOT / "web" / "models"
@@ -79,6 +79,8 @@ def retouch_materials(path: Path) -> None:
 def write_manifest(path: Path, model: Path) -> None:
     p = DEFAULT
     lead_in, lead_out = playable_sweep(p)
+    inner = tracking_error(p, p.record.lead_out_radius)
+    outer = tracking_error(p, p.lead_in_radius)
     manifest = {
         "model": model.name,
         "generated": time.strftime("%Y-%m-%d %H:%M:%SZ", time.gmtime()),
@@ -95,21 +97,44 @@ def write_manifest(path: Path, model: Path) -> None:
         ],
         "specs": [
             {
-                "label": "Plinth",
-                "value": f"{p.plinth.length:.0f} x {p.plinth.depth:.0f}"
-                f" x {p.plinth.height:.0f} mm",
+                "label": "Cabinet",
+                "value": f"{p.plinth.length:.0f} x {p.plinth.depth:.0f} mm",
             },
             {
                 "label": "Platter",
-                "value": f"{p.platter.radius * 2:.0f} mm dia,"
-                f" {p.platter.thickness:.0f} mm alloy",
+                "value": f"{p.platter.radius * 2:.0f} mm die-cast alloy",
             },
-            {"label": "Height to platter", "value": f"{p.platter_top:.0f} mm"},
-            {"label": "Effective length", "value": f"{p.tonearm.effective_length:.0f} mm"},
-            {"label": "Pivot to spindle", "value": f"{p.tonearm.pivot_to_spindle:.0f} mm"},
-            {"label": "Overhang", "value": f"{p.overhang:.0f} mm"},
-            {"label": "Offset angle", "value": f"{p.tonearm.offset_angle:.1f} deg"},
-            {"label": "Drive", "value": "Belt, AC motor, 33 / 45 rpm"},
+            {"label": "Drive", "value": "Quartz-locked direct drive"},
+            {
+                "label": "Starting torque",
+                "value": f"{p.drive.starting_torque} kg-cm",
+            },
+            {
+                "label": "Run-up",
+                "value": f"{p.drive.run_up_seconds} s to 33 rpm",
+            },
+            {"label": "Speeds", "value": "33 1/3 and 45 rpm"},
+            {
+                "label": "Pitch",
+                "value": f"+/- {p.controls.pitch_range:.0f} % slide fader",
+            },
+            {"label": "Arm", "value": "Universal S-shape, gimbal"},
+            {
+                "label": "Effective length",
+                "value": f"{p.tonearm.effective_length:.0f} mm",
+            },
+            {
+                "label": "Overhang",
+                "value": f"{p.overhang:.0f} mm at {p.tonearm.offset_angle:.0f} deg offset",
+            },
+            {
+                "label": "Tracking error",
+                "value": f"{as_minutes(inner)} to {as_minutes(outer)}",
+            },
+            {
+                "label": "Height to platter",
+                "value": f"{p.platter_top:.0f} mm",
+            },
         ],
     }
     path.write_text(json.dumps(manifest, indent=2) + "\n")

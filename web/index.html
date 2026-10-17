@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Turntable</title>
-<meta name="description" content="A parametric belt-drive turntable modelled in build123d, rendered in the browser.">
+<title>Direct-drive turntable</title>
+<meta name="description" content="A parametric direct-drive turntable, after the Technics SL-1210 MK2, modelled in build123d.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23111'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23c8442c'/%3E%3Ccircle cx='16' cy='16' r='1.3' fill='%23eee'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 <script type="importmap">
@@ -23,8 +23,8 @@
   <div id="loading"><span class="spinner"></span>Loading model…</div>
 
   <header id="masthead">
-    <h1>Belt-drive turntable</h1>
-    <p>Modelled parametrically in <a href="https://build123d.readthedocs.io" target="_blank" rel="noopener">build123d</a>. 46 solids, exported to glTF.</p>
+    <h1>Direct-drive turntable</h1>
+    <p>After the Technics SL-1210 MK2. Modelled parametrically in <a href="https://build123d.readthedocs.io" target="_blank" rel="noopener">build123d</a> and exported to glTF.</p>
   </header>
 
   <aside id="panel">
@@ -58,7 +58,7 @@
         <button data-rpm="33.333" class="rpm on">33⅓</button>
         <button data-rpm="45" class="rpm">45</button>
       </div>
-      <p class="note" id="playback-note">Spins the platter and walks the arm from the lead-in groove to the run-out.</p>
+      <p class="note" id="playback-note">Quartz-locked at 33&#8531; or 45, with the arm tracking from the lead-in groove to the run-out.</p>
     </section>
 
     <section>
