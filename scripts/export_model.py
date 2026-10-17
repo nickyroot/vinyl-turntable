@@ -118,14 +118,18 @@ def write_manifest(path: Path, model: Path) -> None:
                 "label": "Pitch",
                 "value": f"+/- {p.controls.pitch_range:.0f} % slide fader",
             },
-            {"label": "Arm", "value": "Universal S-shape, gimbal"},
+            {"label": "Arm", "value": "Rega RB220, one-piece tube"},
+            {
+                "label": "Effective mass",
+                "value": f"{p.tonearm.effective_mass:.0f} g",
+            },
             {
                 "label": "Effective length",
-                "value": f"{p.tonearm.effective_length:.0f} mm",
+                "value": f"{p.tonearm.effective_length:g} mm",
             },
             {
                 "label": "Overhang",
-                "value": f"{p.overhang:.0f} mm at {p.tonearm.offset_angle:.0f} deg offset",
+                "value": f"{p.overhang:g} mm at {p.tonearm.offset_angle:g} deg offset",
             },
             {
                 "label": "Tracking error",

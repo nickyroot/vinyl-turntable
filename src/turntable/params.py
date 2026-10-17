@@ -27,7 +27,7 @@ PALETTE = {
     "top_plate": Finish((0.13, 0.13, 0.14, 1.0)),
     "base": Finish((0.07, 0.07, 0.075, 1.0)),
     "aluminium": Finish((0.70, 0.71, 0.73, 1.0)),
-    "arm_alloy": Finish((0.78, 0.79, 0.80, 1.0)),
+    "arm_black": Finish((0.055, 0.055, 0.06, 1.0)),
     "steel": Finish((0.55, 0.57, 0.60, 1.0)),
     "brass": Finish((0.72, 0.58, 0.28, 1.0)),
     "rubber": Finish((0.10, 0.10, 0.11, 1.0)),
@@ -123,50 +123,52 @@ class DirectDrive:
 
 @dataclass(frozen=True)
 class Tonearm:
-    """Universal S-shaped static-balance arm on a gimbal.
+    """Rega RB220: a one-piece cast aluminium arm, here in matt black.
 
-    The S is not styling: it lets the headshell sit at the offset angle
-    while the counterweight stays on the pivot axis.
+    Rega's published geometry is 236.5 mm effective length, 222 mm from the
+    platter centre to the arm hole, 14.5 mm overhang at a 21.55 degree
+    offset, and 11 g effective mass. The tube is straight and tapered with
+    the headshell cast on, so the offset lives in the headshell and the
+    tube runs a few degrees off the pivot-to-stylus line to land the stylus
+    on it.
     """
 
-    effective_length: float = 230.0
-    pivot_to_spindle: float = 215.0
-    offset_angle: float = 22.0
-    tube_radius: float = 4.2
-    tube_rear: float = 76.0
+    effective_length: float = 236.5
+    pivot_to_spindle: float = 222.0
+    offset_angle: float = 21.55
+    effective_mass: float = 11.0    # g, for the spec sheet
 
-    # Interior control points of the S, as (fraction along the pivot-to-
-    # collar chord, sideways offset as a fraction of the effective length).
-    # Tune these to reshape the bend; the ends are fixed by the pivot and
-    # the headshell collar, so the curve stays geometrically honest.
-    s_curve: tuple[tuple[float, float], ...] = (
-        (0.28, -0.030),
-        (0.60, 0.010),
-        (0.86, 0.038),
-    )
+    tube_radius_root: float = 6.8   # at the bearing housing
+    tube_radius_tip: float = 4.4    # where it runs into the headshell
+    stub_radius: float = 5.0
+    tube_rear: float = 48.0         # stub behind the pivot, for the weight
 
-    base_radius: float = 48.0       # the black arm board let into the plate
-    base_height: float = 4.0
-    post_radius: float = 11.0
-    collar_radius: float = 14.0     # VTA helicoid with its lock ring
-    vta_range: float = 6.0
-    yoke_width: float = 30.0
-    yoke_thickness: float = 8.0
+    head_reach: float = 40.0        # headshell neck to stylus, along the offset
+    head_length: float = 42.0       # the flat cast plate
+    head_width: float = 19.0
+    head_neck_width: float = 12.0
+    head_thickness: float = 4.0
+    finger_lift_length: float = 14.0
 
-    collar_length: float = 16.0     # headshell bayonet collar
-    collar_dia: float = 14.0
-    headshell_length: float = 52.0
-    headshell_width: float = 17.0
-    headshell_thickness: float = 5.0
-    counterweight_radius: float = 22.0
-    counterweight_length: float = 30.0
+    housing: tuple[float, float, float] = (30.0, 22.0, 18.0)  # bearing housing l, w, h
+    pillar_radius: float = 10.0
+    base_radius: float = 21.0
+    base_height: float = 6.0
+
+    counterweight_radius: float = 17.5
+    counterweight_length: float = 22.0
+
     cartridge_length: float = 28.0
     cartridge_width: float = 14.0
     cartridge_height: float = 15.0
     stylus_length: float = 7.0
-    antiskate_radius: float = 11.0
-    antiskate_at: tuple[float, float] = (30.0, 26.0)   # from the pivot, bearing deg
-    rest_at: tuple[float, float] = (44.0, -62.0)       # from the pivot, bearing deg
+
+    # Where the arm parks: the rest sits under the tube at this distance
+    # from the pivot, with the arm swung out to this groove radius, clear of
+    # the record's edge.
+    rest_reach: float = 64.0
+    rest_groove: float = 200.0
+    cue_reach: float = 26.0         # the lift lever, beside the pillar
 
 
 @dataclass(frozen=True)

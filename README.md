@@ -71,9 +71,29 @@ no dial of its own.
 The top and bottom faces are matching perfect rectangles at the 1210's
 453 x 360, so the bevels add to the outline: the widest point is 481 x 388.
 
+## The tonearm
+
+The Technics S-arm is replaced by a Rega RB220 in matt black, built to
+Rega's published geometry: 236.5 mm effective length, 222 mm from the
+platter centre to the arm hole, 14.5 mm overhang at a 21.55 degree offset,
+and 11 g effective mass. It is a different kind of arm, not just a
+different look. The RB220 is straight, so the offset is cast into the
+headshell, and the one-piece tube runs a few degrees off the pivot-to-stylus
+line so the stylus still lands on it.
+
+What makes it read as a Rega: the tube tapers from the bearing housing out
+to the headshell; the headshell is a flat plate cast on, with round
+lightening holes and two half-inch slots for the cartridge, and a finger
+lift that curls down off its outer corner; a big disc counterweight sits
+behind the bearing; and the base carries a bracket with the rest and the
+bias slider, with the cue lever out on the side away from the platter.
+
+Rega's geometry tracks a little better than the Technics did, at 2.43
+degrees worst case against 2.73.
+
 ## What is modelled
 
-317 solids across seven groups, which are also the viewer's layers:
+314 solids across seven groups, which are also the viewer's layers:
 
 | Group | Parts |
 | --- | --- |
@@ -81,7 +101,7 @@ The top and bottom faces are matching perfect rectangles at the 1210's
 | `controls` | start/stop, 33 and 45, power, strobe lamp, pitch fader, target light, 45 adapter |
 | `drive` | bearing hub, stator plate and coils, spindle |
 | `platter` | rotor magnet, platter, damping ring, strobe dots, mat |
-| `arm` | arm board, pillar, VTA collar, gimbal, S-tube, headshell, cartridge, counterweight, anti-skate, rest |
+| `arm` | Rega RB220: base, pillar, bearing housing, tapered tube, cast headshell, finger lift, cartridge, counterweight, rest, bias slider, cue lever |
 | `record` | 12-inch record and label |
 | `cover` | dust cover and hinges |
 
@@ -143,7 +163,7 @@ Some things worth trying:
 | Bigger platter | `Platter.radius` |
 | Taller or slimmer plinth | `Plinth.height`, `Plinth.corner_radius` |
 | Chassis facets | `Plinth.bevel` (45 deg, top and bottom alike) |
-| Reshape the S-bend | `Tonearm.s_curve` |
+| Arm taper | `Tonearm.tube_radius_root`, `tube_radius_tip` |
 | Different arm geometry | `Tonearm.effective_length`, `pivot_to_spindle`, `offset_angle` |
 | Move a control | `Controls.*_at` |
 | Strobe dot density | `Platter.strobe_per_row`, `strobe_rows` |
@@ -205,8 +225,8 @@ model rather than the mesh.
 The last two are the useful ones. The clash check caught the rotor and the
 stator occupying the same millimetres, which is the sort of thing a render
 hides completely. The tracking error check is the reason the headshell
-offset is handed correctly: flip it and the error goes from 2.7 degrees to
-46, which no amount of looking at the model would have told you.
+offset is handed correctly: flip it and the error goes from 2.4 degrees to
+45, which no amount of looking at the model would have told you.
 
 ## Viewer
 

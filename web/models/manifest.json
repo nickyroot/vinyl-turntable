@@ -1,18 +1,18 @@
 {
   "model": "turntable.glb",
-  "generated": "2026-10-17 21:20:03Z",
+  "generated": "2026-10-17 21:35:19Z",
   "units": "mm",
   "spindle_mm": [
     -45.0,
     4.0
   ],
   "arm_pivot_mm": [
-    144.8337324646693,
-    104.93638599896653
+    151.0143656146818,
+    108.22268693846776
   ],
   "arm_sweep_deg": [
     0.0,
-    -23.92
+    -23.15
   ],
   "rpm": [
     33.333,
@@ -103,19 +103,23 @@
     },
     {
       "label": "Arm",
-      "value": "Universal S-shape, gimbal"
+      "value": "Rega RB220, one-piece tube"
+    },
+    {
+      "label": "Effective mass",
+      "value": "11 g"
     },
     {
       "label": "Effective length",
-      "value": "230 mm"
+      "value": "236.5 mm"
     },
     {
       "label": "Overhang",
-      "value": "15 mm at 22 deg offset"
+      "value": "14.5 mm at 21.55 deg offset"
     },
     {
       "label": "Tracking error",
-      "value": "+0d06m to +2d44m"
+      "value": "-0d09m to +2d26m"
     },
     {
       "label": "Height to platter",

@@ -17,7 +17,7 @@ const HIDDEN_BY_DEFAULT = ['cover'];
 const SURFACE = {
   top_plate:   { metalness: 0.0, roughness: 0.46, envMapIntensity: 0.7 },
   base:        { metalness: 0.0, roughness: 0.78, envMapIntensity: 0.3 },
-  arm_alloy:   { metalness: 1.0, roughness: 0.30, envMapIntensity: 1.0 },
+  arm_black:  { metalness: 0.0, roughness: 0.72, envMapIntensity: 0.45 },
   mat:         { metalness: 0.0, roughness: 0.92, envMapIntensity: 0.25 },
   strobe:      { metalness: 1.0, roughness: 0.34, envMapIntensity: 1.0 },
   lamp:        { metalness: 0.0, roughness: 0.40, envMapIntensity: 0.6 },

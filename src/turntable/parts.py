@@ -13,25 +13,29 @@ numbers mean what they say.
 
 from __future__ import annotations
 
-from math import cos, radians, sin
+from math import atan2, cos, degrees, hypot, radians, sin
 
 from build123d import (
     Align,
     Axis,
     Box,
-    Circle,
     Color,
     Compound,
     Cone,
     Cylinder,
     Keep,
     Plane,
+    Polygon,
     Pos,
+    Rectangle,
     Rot,
     Shape,
+    SlotCenterToCenter,
+    Sphere,
     Spline,
     Vector,
     chamfer,
+    extrude,
     fillet,
     split,
     sweep,
@@ -372,20 +376,19 @@ def _arm_frame(p: TurntableParams) -> dict:
     """Resolve the arm's local geometry.
 
     Local X runs from the pivot to the stylus, so the stylus is at
-    (effective_length, 0) by definition and the headshell kinks off it at
-    the offset angle. Everything else follows from that.
+    (effective_length, 0) by definition. The headshell runs back from it at
+    the offset angle to its neck, and the straight tube joins the pivot to
+    that neck, which is why the tube sits a few degrees off the X axis.
     """
     t = p.tonearm
     axis = radians(OFFSET_SIGN * t.offset_angle)
-    reach = t.collar_length + t.headshell_length
-
     stylus = (t.effective_length, 0.0)
-    collar = (stylus[0] - reach * cos(axis), stylus[1] - reach * sin(axis))
+    neck = (stylus[0] - t.head_reach * cos(axis), stylus[1] - t.head_reach * sin(axis))
 
     # Vertical stack under the tube centreline, set so the stylus just
-    # touches the record.
-    head_top = -t.tube_radius
-    head_bottom = head_top - t.headshell_thickness
+    # touches the record. The tube runs down into the cast plate.
+    head_top = -t.tube_radius_tip + 1.0
+    head_bottom = head_top - t.head_thickness
     cart_bottom = head_bottom - t.cartridge_height
     cantilever_z = cart_bottom + 2.0
     tip_z = cantilever_z - t.stylus_length
@@ -393,7 +396,9 @@ def _arm_frame(p: TurntableParams) -> dict:
     return {
         "axis": axis,
         "stylus": stylus,
-        "collar": collar,
+        "neck": neck,
+        "tube_angle": degrees(atan2(neck[1], neck[0])),
+        "tube_length": hypot(*neck),
         "head_top": head_top,
         "head_bottom": head_bottom,
         "cantilever_z": cantilever_z,
@@ -402,130 +407,93 @@ def _arm_frame(p: TurntableParams) -> dict:
     }
 
 
-def _s_path(p: TurntableParams) -> Spline:
-    """The S, as a spline from the pivot to the headshell collar.
+def _headshell(t) -> Shape:
+    """The cast headshell plate, with Rega's lightening holes and slots.
 
-    Control points are given along the pivot-to-collar chord and across it,
-    so reshaping the bend cannot move either end.
+    Built in its own frame: neck at the origin, axis along +X, top face at
+    z = 0.
     """
-    t = p.tonearm
-    g = _arm_frame(p)
-    cx, cy = g["collar"]
-    chord = (cx**2 + cy**2) ** 0.5
-    ux, uy = cx / chord, cy / chord
-    px, py = -uy, ux  # perpendicular
+    th = t.head_thickness
+    outline = Polygon(
+        (0, -t.head_neck_width / 2),
+        (t.head_length, -t.head_width / 2),
+        (t.head_length, t.head_width / 2),
+        (0, t.head_neck_width / 2),
+        align=None,
+    )
+    plate = extrude(outline, -th)
+    plate = fillet(plate.edges().filter_by(Axis.Z), 2.0)
+    through = th + 2
+    for x, y, r in ((9, 0, 3.2), (17, 4.8, 2.4), (17, -4.8, 2.4), (35, 0, 2.2)):
+        plate -= Pos(x, y, -th - 1) * Cylinder(r, through, align=BOTTOM)
+    # Half-inch mounting slots, so the cartridge can slide for alignment.
+    slot_x = t.head_reach - 13
+    for y in (6.35, -6.35):
+        plate -= Pos(Z=-th - 1) * extrude(Pos(slot_x, y) * SlotCenterToCenter(5.0, 3.0), through)
+    return plate
 
-    pts = [(0.0, 0.0, 0.0)]
-    for along, across in t.s_curve:
-        d = along * chord
-        o = across * t.effective_length
-        pts.append((ux * d + px * o, uy * d + py * o, 0.0))
-    pts.append((cx, cy, 0.0))
-    return Spline(*pts)
+
+def _finger_lift(t) -> Shape:
+    """Thin strip swept out and down from the plate's outer front corner."""
+    x0, y0, z0 = t.head_length - 7, t.head_width / 2 - 1, -t.head_thickness / 2
+    n = t.finger_lift_length
+    path = Spline(
+        (x0, y0, z0),
+        (x0 + 1.5, y0 + n * 0.36, z0 - 2.5),
+        (x0 + 2.5, y0 + n * 0.54, z0 - n * 0.8),
+    )
+    section = Plane(origin=path @ 0, z_dir=path % 0) * Rectangle(5.0, 1.6)
+    return sweep(section, path)
 
 
 def tonearm(p: TurntableParams) -> Shape:
-    """Universal S-shaped arm, built at the pivot and swung into place."""
+    """Rega RB220, built at the pivot and swung into place as one piece."""
     t = p.tonearm
     g = _arm_frame(p)
     px, py = p.pivot
+    tube_z = g["tube_z"]
     out = []
 
-    # The black arm board let into the top plate.
-    board = Cylinder(t.base_radius, t.base_height, align=BOTTOM)
-    board = chamfer(board.edges().group_by(Axis.Z)[-1], 1.5)
-    out.append(finish(Pos(px, py, p.plinth_top) * board, "arm_board", "base"))
+    # Three-point base on the chassis, and the short pillar above it.
+    base = Cylinder(t.base_radius, t.base_height, align=BOTTOM)
+    base = chamfer(base.edges().group_by(Axis.Z)[-1], 1.2)
+    out.append(finish(Pos(px, py, p.plinth_top) * base, "arm_base", "arm_black"))
 
-    tube_z = g["tube_z"]
-    post_top = tube_z - t.yoke_thickness / 2 - 3
-    post_base = p.plinth_top + t.base_height
-    post = Cylinder(t.post_radius, post_top - post_base, align=BOTTOM)
-    out.append(finish(Pos(px, py, post_base) * post, "arm_pillar", "steel"))
+    hl, hw, hh = t.housing
+    pillar_base = p.plinth_top + t.base_height
+    pillar = Cylinder(t.pillar_radius, tube_z - hh / 2 - pillar_base + 1, align=BOTTOM)
+    out.append(finish(Pos(px, py, pillar_base) * pillar, "arm_pillar", "arm_black"))
 
-    # VTA helicoid and its lock ring: 6 mm of height adjustment.
-    helicoid = Cylinder(t.collar_radius, t.vta_range + 8, align=BOTTOM)
-    helicoid = chamfer(helicoid.edges(), 1.0)
-    out.append(
-        finish(Pos(px, py, post_top - t.vta_range - 8) * helicoid, "vta_collar", "arm_alloy")
-    )
-    lock = Cylinder(t.collar_radius + 2.5, 4, align=BOTTOM)
-    lock = chamfer(lock.edges(), 0.8)
-    out.append(finish(Pos(px, py, post_base + 2) * lock, "vta_lock", "arm_alloy"))
-
-    # From here everything is laid out in the local frame and swung round.
+    # Everything from here is laid out along the tube and swung round.
     place = Pos(px, py, tube_z) * Rot(Z=heading(p))
+    along = place * Rot(Z=g["tube_angle"])
 
-    yoke = Box(t.yoke_width, t.yoke_width, t.yoke_thickness)
-    yoke = fillet(yoke.edges().filter_by(Axis.Z), 5)
-    out.append(finish(place * yoke, "gimbal_yoke", "arm_alloy"))
+    # Bearing housing: the block the tube runs through, its top sloping
+    # away front and back the way Rega's casting does.
+    housing = Box(hl, hw, hh)
+    housing = chamfer(housing.edges().group_by(Axis.Z)[-1].filter_by(Axis.Y), hh * 0.4)
+    housing = fillet(housing.edges().filter_by(Axis.Z), 3)
+    out.append(finish(along * housing, "bearing_housing", "arm_black"))
 
-    for i, side in enumerate((-1, 1)):
-        pin = Rot(X=90) * Cylinder(3.0, 5, align=BOTTOM)
-        out.append(
-            finish(
-                place * Pos(0, side * (t.yoke_width / 2 + 2), 0) * pin,
-                f"gimbal_pin_{i + 1}",
-                "steel",
-            )
-        )
+    # One piece, tapering from the bearing out to the headshell.
+    tube = Rot(Y=90) * Cone(
+        t.tube_radius_root, t.tube_radius_tip, g["tube_length"], align=BOTTOM
+    )
+    out.append(finish(along * tube, "arm_tube", "arm_black"))
 
-    # The S itself.
-    path = _s_path(p)
-    section = Plane(origin=path @ 0, z_dir=path % 0) * Circle(t.tube_radius)
-    tube = sweep(section, path)
-    out.append(finish(place * tube, "arm_tube", "arm_alloy"))
-
-    # Straight stub behind the pivot carrying the counterweight.
-    stub = Rot(Y=-90) * Cylinder(t.tube_radius, t.tube_rear, align=BOTTOM)
-    out.append(finish(place * stub, "arm_stub", "arm_alloy"))
+    stub = Rot(Y=-90) * Cylinder(t.stub_radius, t.tube_rear, align=BOTTOM)
+    out.append(finish(along * stub, "arm_stub", "arm_black"))
 
     cw = Rot(Y=90) * Cylinder(t.counterweight_radius, t.counterweight_length, align=BOTTOM)
-    cw = chamfer(cw.edges(), 2.5)
-    cw_x = -t.tube_rear + 6
-    out.append(finish(place * Pos(cw_x) * cw, "counterweight", "rubber"))
+    cw = chamfer(cw.edges(), 1.5)
+    out.append(finish(along * Pos(-t.tube_rear + 1) * cw, "counterweight", "arm_black"))
 
-    dial = Rot(Y=90) * Cylinder(t.counterweight_radius * 0.6, 6, align=BOTTOM)
-    out.append(
-        finish(place * Pos(cw_x + t.counterweight_length) * dial, "stylus_force_dial", "arm_alloy")
-    )
+    # The headshell is cast with the tube, angled at the offset.
+    head = place * Pos(*g["neck"]) * Rot(Z=OFFSET_SIGN * t.offset_angle)
+    shell = head * Pos(Z=g["head_top"])
+    out.append(finish(shell * _headshell(t), "headshell", "arm_black"))
+    out.append(finish(shell * _finger_lift(t), "finger_lift", "arm_black"))
 
-    # Anti-skate: a calibrated dial beside the pillar on the 1200.
-    reach, bearing = t.antiskate_at
-    ax = px + reach * cos(radians(bearing))
-    ay = py + reach * sin(radians(bearing))
-    anti = Cylinder(t.antiskate_radius, 10, align=BOTTOM)
-    anti = chamfer(anti.edges().group_by(Axis.Z)[-1], 1.0)
-    out.append(finish(Pos(ax, ay, p.plinth_top) * anti, "antiskate_dial", "arm_alloy"))
-
-    # Headshell: bayonet collar, then the shell at the offset angle.
-    head = place * Pos(*g["collar"]) * Rot(Z=OFFSET_SIGN * t.offset_angle)
-
-    collar = Rot(Y=90) * Cylinder(t.collar_dia / 2, t.collar_length, align=BOTTOM)
-    collar = chamfer(collar.edges(), 1.0)
-    out.append(finish(head * collar, "headshell_collar", "arm_alloy"))
-
-    shell = Box(
-        t.headshell_length,
-        t.headshell_width,
-        t.headshell_thickness,
-        align=(Align.MIN, Align.CENTER, Align.MAX),
-    )
-    shell = fillet(shell.edges().filter_by(Axis.Z), 3)
-    out.append(
-        finish(head * Pos(t.collar_length, 0, g["head_top"]) * shell, "headshell", "arm_alloy")
-    )
-
-    finger = Box(12, 4, 16, align=(Align.MIN, Align.CENTER, Align.MIN))
-    finger = fillet(finger.edges().filter_by(Axis.Y), 2)
-    out.append(
-        finish(
-            head * Pos(t.collar_length + t.headshell_length - 12, 0, g["head_top"]) * finger,
-            "finger_lift",
-            "arm_alloy",
-        )
-    )
-
-    reach = t.collar_length + t.headshell_length
     cart = Box(
         t.cartridge_length,
         t.cartridge_width,
@@ -533,42 +501,81 @@ def tonearm(p: TurntableParams) -> Shape:
         align=(Align.MAX, Align.CENTER, Align.MAX),
     )
     cart = fillet(cart.edges().filter_by(Axis.X), 1.5)
-    out.append(finish(head * Pos(reach - 5, 0, g["head_bottom"]) * cart, "cartridge", "cartridge"))
+    out.append(
+        finish(head * Pos(t.head_reach - 5, 0, g["head_bottom"]) * cart, "cartridge", "cartridge")
+    )
 
     cantilever = Rot(Y=90) * Cylinder(0.7, 7, align=BOTTOM)
     out.append(
         finish(
-            head * Pos(reach - 7, 0, g["cantilever_z"]) * cantilever, "cantilever", "arm_alloy"
+            head * Pos(t.head_reach - 7, 0, g["cantilever_z"]) * cantilever,
+            "cantilever",
+            "steel",
         )
     )
 
     tip = Rot(Y=180) * Cone(0.9, 0.05, t.stylus_length, align=BOTTOM)
-    out.append(finish(head * Pos(reach, 0, g["cantilever_z"]) * tip, "stylus", "steel"))
+    out.append(finish(head * Pos(t.head_reach, 0, g["cantilever_z"]) * tip, "stylus", "steel"))
 
     return Compound(children=out, label="tonearm")
 
 
+def _parked_direction(p: TurntableParams) -> float:
+    """World angle, in radians, of the tube when the arm is on its rest."""
+    return radians(heading(p, p.tonearm.rest_groove) + _arm_frame(p)["tube_angle"])
+
+
 def arm_rest(p: TurntableParams) -> Shape:
-    """Rest and clamp, on the arm board outboard of the pivot."""
+    """Rest, bias slider and cue lever, around the base.
+
+    The rest sits on a bracket off the base, under the tube where the
+    parked arm lies, and the bracket carries the bias slider as Rega's
+    base does. The cue lever sticks out on the side away from the platter.
+    """
     t = p.tonearm
     g = _arm_frame(p)
     px, py = p.pivot
-    reach, bearing = t.rest_at
-    a = radians(bearing)
-    x, y = px + reach * cos(a), py + reach * sin(a)
-
-    height = g["tube_z"] - p.plinth_top - 10
+    z0 = p.plinth_top
+    a = _parked_direction(p)
     out = []
-    post = Cylinder(5.5, height, align=BOTTOM)
-    out.append(finish(Pos(x, y, p.plinth_top) * post, "rest_post", "arm_alloy"))
-    cradle = Cylinder(9.5, 8, align=BOTTOM)
-    cradle -= Pos(Z=4.5) * Box(5.0, 32, 9, align=BOTTOM)
-    out.append(finish(Pos(x, y, p.plinth_top + height) * cradle, "rest_cradle", "rubber"))
-    clip = Box(4, 13, 3, align=BOTTOM)
-    clip = fillet(clip.edges().filter_by(Axis.Z), 1.2)
-    out.append(
-        finish(Pos(x + 9, y, p.plinth_top + height + 4) * clip, "rest_clamp", "arm_alloy")
-    )
+
+    # Bracket from the base out to the rest, with the bias slot in it.
+    span = t.rest_reach - t.base_radius + 8
+    bracket = Box(span, 10, 3, align=(Align.MIN, Align.CENTER, Align.MIN))
+    bracket = fillet(bracket.edges().filter_by(Axis.Z), 2)
+    bracket -= Pos(6, 0, -1) * Box(9, 3, 5, align=(Align.MIN, Align.CENTER, Align.MIN))
+    out_along = Pos(px, py, z0) * Rot(Z=degrees(a)) * Pos(t.base_radius - 6)
+    out.append(finish(out_along * bracket, "rest_bracket", "arm_black"))
+    knob = Cylinder(2.2, 4.5, align=BOTTOM)
+    out.append(finish(out_along * Pos(9.5, 0, 1) * knob, "bias_slider", "steel"))
+
+    # Rest: a post and a U cradle, the groove in line with the parked tube.
+    x, y = px + t.rest_reach * cos(a), py + t.rest_reach * sin(a)
+    taper = (t.tube_radius_tip - t.tube_radius_root) / g["tube_length"]
+    tube_r = t.tube_radius_root + taper * t.rest_reach
+    seat = g["tube_z"] - tube_r - 1.0
+    post = Cylinder(4.0, seat - 6 - (z0 + 3), align=BOTTOM)
+    out.append(finish(Pos(x, y, z0 + 3) * post, "rest_post", "arm_black"))
+    cradle = Box(9, 15, 11, align=BOTTOM)
+    cradle -= Pos(Z=6 + tube_r + 1) * Rot(Y=90) * Cylinder(tube_r + 0.5, 20)
+    cradle = Rot(Z=degrees(a)) * cradle
+    out.append(finish(Pos(x, y, seat - 6) * cradle, "rest_cradle", "arm_black"))
+
+    # Cue lever, on whichever side of the pillar faces away from the platter.
+    sx, sy = p.spindle_x - px, p.spindle_y - py
+    side = a + radians(90)
+    if cos(side) * sx + sin(side) * sy > 0:
+        side = a - radians(90)
+    cx, cy = px + t.cue_reach * cos(side), py + t.cue_reach * sin(side)
+    lift_top = g["tube_z"] - t.tube_radius_root - 8
+    post = Cylinder(4.0, lift_top - z0, align=BOTTOM)
+    out.append(finish(Pos(cx, cy, z0) * post, "cue_post", "arm_black"))
+    lever_z = z0 + (lift_top - z0) * 0.6
+    lever = Rot(Z=degrees(side)) * Rot(Y=90) * Cylinder(1.3, 22, align=BOTTOM)
+    out.append(finish(Pos(cx, cy, lever_z) * lever, "cue_lever", "steel"))
+    ball = Pos(cx + 22 * cos(side), cy + 22 * sin(side), lever_z) * Sphere(2.6)
+    out.append(finish(ball, "cue_knob", "arm_black"))
+
     return Compound(children=out, label="arm_rest")
 
 
