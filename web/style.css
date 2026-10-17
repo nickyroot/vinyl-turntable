@@ -181,10 +181,13 @@ body {
   position: absolute; inset: 0; display: flex; gap: 10px;
   align-items: center; justify-content: center;
   color: var(--ink-dim); font-size: 0.8125rem;
-  background: var(--bg-grad); transition: opacity 0.4s ease;
+  background: var(--bg-grad);
+  transition: opacity 0.4s ease, visibility 0s linear 0.4s;
 }
 
-#loading.done { opacity: 0; pointer-events: none; }
+/* Take it out of the page once it has faded; on narrow screens it covers the
+   controls as well as the canvas, so opacity alone is not enough. */
+#loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
 
 .spinner {
   width: 14px; height: 14px; border-radius: 50%;
