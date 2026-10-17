@@ -27,7 +27,8 @@ PALETTE = {
     "top_plate": Finish((0.13, 0.13, 0.14, 1.0)),
     "base": Finish((0.07, 0.07, 0.075, 1.0)),
     "aluminium": Finish((0.70, 0.71, 0.73, 1.0)),
-    "arm_black": Finish((0.055, 0.055, 0.06, 1.0)),
+    # Matt black: the arm, the buttons, the pitch slider and the platter.
+    "matt_black": Finish((0.055, 0.055, 0.06, 1.0)),
     "steel": Finish((0.55, 0.57, 0.60, 1.0)),
     "brass": Finish((0.72, 0.58, 0.28, 1.0)),
     "rubber": Finish((0.10, 0.10, 0.11, 1.0)),

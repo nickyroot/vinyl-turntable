@@ -235,7 +235,7 @@ def platter(p: TurntableParams) -> Shape:
     body = chamfer(
         body.faces().sort_by(Axis.Z)[-1].edges().sort_by(Axis.X)[-1], pl.rim_chamfer
     )
-    return finish(Pos(*p.spindle, z) * body, "platter", "aluminium")
+    return finish(Pos(*p.spindle, z) * body, "platter", "matt_black")
 
 
 def platter_damping(p: TurntableParams) -> Shape:
@@ -296,7 +296,7 @@ def controls(p: TurntableParams) -> Shape:
     w, dep = c.start_stop_size
     pad = Box(w, dep, 6, align=BOTTOM)
     pad = fillet(pad.edges().filter_by(Axis.Z), 4)
-    out.append(finish(Pos(*c.start_stop_at, z) * pad, "start_stop", "aluminium"))
+    out.append(finish(Pos(*c.start_stop_at, z) * pad, "start_stop", "matt_black"))
 
     for name, dx in ((33, -c.speed_pitch / 2), (45, c.speed_pitch / 2)):
         bw, bd = c.speed_button
@@ -306,7 +306,7 @@ def controls(p: TurntableParams) -> Shape:
             finish(
                 Pos(c.speed_at[0] + dx, c.speed_at[1], z) * btn,
                 f"speed_{name}",
-                "aluminium",
+                "matt_black",
             )
         )
         led = Pos(c.speed_at[0] + dx, c.speed_at[1] + bd / 2 + 3, z) * Cylinder(
@@ -317,7 +317,7 @@ def controls(p: TurntableParams) -> Shape:
     # Power switch, with the strobe lamp ganged to it.
     knob = Cylinder(c.power_radius, c.power_height, align=BOTTOM)
     knob = chamfer(knob.edges().group_by(Axis.Z)[-1], 1.5)
-    out.append(finish(Pos(*c.power_at, z) * knob, "power_switch", "aluminium"))
+    out.append(finish(Pos(*c.power_at, z) * knob, "power_switch", "matt_black"))
 
     ww, wd = c.strobe_window
     window = Box(ww, wd, 2.5, align=BOTTOM)
@@ -327,13 +327,13 @@ def controls(p: TurntableParams) -> Shape:
     # Pitch fader: the MK2's headline change, rotary knob to a 100 mm slide.
     slot_w, slot_l = c.pitch_slot
     rail = Box(3.5, slot_l - 10, 1.5, align=BOTTOM)
-    out.append(finish(Pos(*c.pitch_at, z - 4) * rail, "pitch_rail", "steel"))
+    out.append(finish(Pos(*c.pitch_at, z - 4) * rail, "pitch_rail", "matt_black"))
 
     kw, kd, kh = c.pitch_knob
     knob = Box(kw, kd, kh, align=BOTTOM)
     knob = fillet(knob.edges().filter_by(Axis.Z), 2.5)
     knob -= Pos(0, 0, z * 0 + kh - 1) * Box(kw + 2, 2.2, 2, align=BOTTOM)
-    out.append(finish(Pos(*c.pitch_at, z - 5) * knob, "pitch_fader", "aluminium"))
+    out.append(finish(Pos(*c.pitch_at, z - 5) * knob, "pitch_fader", "matt_black"))
 
     # Green LED that lights when the quartz lock holds the speed.
     lock = Cylinder(2.0, 1.2, align=BOTTOM)
@@ -457,12 +457,12 @@ def tonearm(p: TurntableParams) -> Shape:
     # Three-point base on the chassis, and the short pillar above it.
     base = Cylinder(t.base_radius, t.base_height, align=BOTTOM)
     base = chamfer(base.edges().group_by(Axis.Z)[-1], 1.2)
-    out.append(finish(Pos(px, py, p.plinth_top) * base, "arm_base", "arm_black"))
+    out.append(finish(Pos(px, py, p.plinth_top) * base, "arm_base", "matt_black"))
 
     hl, hw, hh = t.housing
     pillar_base = p.plinth_top + t.base_height
     pillar = Cylinder(t.pillar_radius, tube_z - hh / 2 - pillar_base + 1, align=BOTTOM)
-    out.append(finish(Pos(px, py, pillar_base) * pillar, "arm_pillar", "arm_black"))
+    out.append(finish(Pos(px, py, pillar_base) * pillar, "arm_pillar", "matt_black"))
 
     # Everything from here is laid out along the tube and swung round.
     place = Pos(px, py, tube_z) * Rot(Z=heading(p))
@@ -473,26 +473,26 @@ def tonearm(p: TurntableParams) -> Shape:
     housing = Box(hl, hw, hh)
     housing = chamfer(housing.edges().group_by(Axis.Z)[-1].filter_by(Axis.Y), hh * 0.4)
     housing = fillet(housing.edges().filter_by(Axis.Z), 3)
-    out.append(finish(along * housing, "bearing_housing", "arm_black"))
+    out.append(finish(along * housing, "bearing_housing", "matt_black"))
 
     # One piece, tapering from the bearing out to the headshell.
     tube = Rot(Y=90) * Cone(
         t.tube_radius_root, t.tube_radius_tip, g["tube_length"], align=BOTTOM
     )
-    out.append(finish(along * tube, "arm_tube", "arm_black"))
+    out.append(finish(along * tube, "arm_tube", "matt_black"))
 
     stub = Rot(Y=-90) * Cylinder(t.stub_radius, t.tube_rear, align=BOTTOM)
-    out.append(finish(along * stub, "arm_stub", "arm_black"))
+    out.append(finish(along * stub, "arm_stub", "matt_black"))
 
     cw = Rot(Y=90) * Cylinder(t.counterweight_radius, t.counterweight_length, align=BOTTOM)
     cw = chamfer(cw.edges(), 1.5)
-    out.append(finish(along * Pos(-t.tube_rear + 1) * cw, "counterweight", "arm_black"))
+    out.append(finish(along * Pos(-t.tube_rear + 1) * cw, "counterweight", "matt_black"))
 
     # The headshell is cast with the tube, angled at the offset.
     head = place * Pos(*g["neck"]) * Rot(Z=OFFSET_SIGN * t.offset_angle)
     shell = head * Pos(Z=g["head_top"])
-    out.append(finish(shell * _headshell(t), "headshell", "arm_black"))
-    out.append(finish(shell * _finger_lift(t), "finger_lift", "arm_black"))
+    out.append(finish(shell * _headshell(t), "headshell", "matt_black"))
+    out.append(finish(shell * _finger_lift(t), "finger_lift", "matt_black"))
 
     cart = Box(
         t.cartridge_length,
@@ -545,7 +545,7 @@ def arm_rest(p: TurntableParams) -> Shape:
     bracket = fillet(bracket.edges().filter_by(Axis.Z), 2)
     bracket -= Pos(6, 0, -1) * Box(9, 3, 5, align=(Align.MIN, Align.CENTER, Align.MIN))
     out_along = Pos(px, py, z0) * Rot(Z=degrees(a)) * Pos(t.base_radius - 6)
-    out.append(finish(out_along * bracket, "rest_bracket", "arm_black"))
+    out.append(finish(out_along * bracket, "rest_bracket", "matt_black"))
     knob = Cylinder(2.2, 4.5, align=BOTTOM)
     out.append(finish(out_along * Pos(9.5, 0, 1) * knob, "bias_slider", "steel"))
 
@@ -555,11 +555,11 @@ def arm_rest(p: TurntableParams) -> Shape:
     tube_r = t.tube_radius_root + taper * t.rest_reach
     seat = g["tube_z"] - tube_r - 1.0
     post = Cylinder(4.0, seat - 6 - (z0 + 3), align=BOTTOM)
-    out.append(finish(Pos(x, y, z0 + 3) * post, "rest_post", "arm_black"))
+    out.append(finish(Pos(x, y, z0 + 3) * post, "rest_post", "matt_black"))
     cradle = Box(9, 15, 11, align=BOTTOM)
     cradle -= Pos(Z=6 + tube_r + 1) * Rot(Y=90) * Cylinder(tube_r + 0.5, 20)
     cradle = Rot(Z=degrees(a)) * cradle
-    out.append(finish(Pos(x, y, seat - 6) * cradle, "rest_cradle", "arm_black"))
+    out.append(finish(Pos(x, y, seat - 6) * cradle, "rest_cradle", "matt_black"))
 
     # Cue lever, on whichever side of the pillar faces away from the platter.
     sx, sy = p.spindle_x - px, p.spindle_y - py
@@ -569,12 +569,12 @@ def arm_rest(p: TurntableParams) -> Shape:
     cx, cy = px + t.cue_reach * cos(side), py + t.cue_reach * sin(side)
     lift_top = g["tube_z"] - t.tube_radius_root - 8
     post = Cylinder(4.0, lift_top - z0, align=BOTTOM)
-    out.append(finish(Pos(cx, cy, z0) * post, "cue_post", "arm_black"))
+    out.append(finish(Pos(cx, cy, z0) * post, "cue_post", "matt_black"))
     lever_z = z0 + (lift_top - z0) * 0.6
     lever = Rot(Z=degrees(side)) * Rot(Y=90) * Cylinder(1.3, 22, align=BOTTOM)
     out.append(finish(Pos(cx, cy, lever_z) * lever, "cue_lever", "steel"))
     ball = Pos(cx + 22 * cos(side), cy + 22 * sin(side), lever_z) * Sphere(2.6)
-    out.append(finish(ball, "cue_knob", "arm_black"))
+    out.append(finish(ball, "cue_knob", "matt_black"))
 
     return Compound(children=out, label="arm_rest")
 
