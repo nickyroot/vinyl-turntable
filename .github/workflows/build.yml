@@ -1,0 +1,65 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check src scripts
+
+      - name: Check the geometry
+        run: uv run python scripts/verify.py
+
+      - name: Build the model
+        run: uv run export --quality high
+
+      - name: Confirm the viewer assets rebuilt
+        run: |
+          test -s web/models/turntable.glb
+          test -s web/models/manifest.json
+          ls -la web/models dist
+
+      - name: Upload CAD exports
+        uses: actions/upload-artifact@v4
+        with:
+          name: cad-exports
+          path: dist/
+          retention-days: 14
+
+      - name: Upload the site
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: model
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

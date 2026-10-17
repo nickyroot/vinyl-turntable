@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Build output. The GLB is committed so GitHub Pages can serve it without a
+# build step; the CAD exports are large and rebuilt on demand.
+dist/
+
+# OS
+.DS_Store

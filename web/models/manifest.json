@@ -1,0 +1,103 @@
+{
+  "model": "turntable.glb",
+  "generated": "2026-10-17 15:49:44Z",
+  "units": "mm",
+  "spindle_mm": [
+    -58.0,
+    0.0
+  ],
+  "arm_pivot_mm": [
+    141.53227827841508,
+    97.31839458717519
+  ],
+  "arm_sweep_deg": [
+    0.0,
+    -23.13
+  ],
+  "rpm": [
+    33.333,
+    45.0
+  ],
+  "groups": [
+    {
+      "name": "chassis",
+      "parts": [
+        "plinth",
+        "feet",
+        "rear_panel",
+        "speed_switch",
+        "puck"
+      ]
+    },
+    {
+      "name": "drive",
+      "parts": [
+        "motor",
+        "belt",
+        "bearing_housing"
+      ]
+    },
+    {
+      "name": "platter",
+      "parts": [
+        "sub_platter",
+        "platter",
+        "mat",
+        "spindle"
+      ]
+    },
+    {
+      "name": "arm",
+      "parts": [
+        "tonearm",
+        "arm_rest"
+      ]
+    },
+    {
+      "name": "record",
+      "parts": [
+        "record"
+      ]
+    },
+    {
+      "name": "cover",
+      "parts": [
+        "dust_cover"
+      ]
+    }
+  ],
+  "specs": [
+    {
+      "label": "Plinth",
+      "value": "450 x 350 x 42 mm"
+    },
+    {
+      "label": "Platter",
+      "value": "300 mm dia, 20 mm alloy"
+    },
+    {
+      "label": "Height to platter",
+      "value": "96 mm"
+    },
+    {
+      "label": "Effective length",
+      "value": "239 mm"
+    },
+    {
+      "label": "Pivot to spindle",
+      "value": "222 mm"
+    },
+    {
+      "label": "Overhang",
+      "value": "17 mm"
+    },
+    {
+      "label": "Offset angle",
+      "value": "23.1 deg"
+    },
+    {
+      "label": "Drive",
+      "value": "Belt, AC motor, 33 / 45 rpm"
+    }
+  ]
+}

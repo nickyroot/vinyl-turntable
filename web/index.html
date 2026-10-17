@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turntable</title>
+<meta name="description" content="A parametric belt-drive turntable modelled in build123d, rendered in the browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23111'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23c8442c'/%3E%3Ccircle cx='16' cy='16' r='1.3' fill='%23eee'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="view"></canvas>
+
+  <div id="loading"><span class="spinner"></span>Loading model…</div>
+
+  <header id="masthead">
+    <h1>Belt-drive turntable</h1>
+    <p>Modelled parametrically in <a href="https://build123d.readthedocs.io" target="_blank" rel="noopener">build123d</a>. 46 solids, exported to glTF.</p>
+  </header>
+
+  <aside id="panel">
+    <section>
+      <h2>Layers</h2>
+      <div id="layers" class="switches"></div>
+    </section>
+
+    <section>
+      <h2>View</h2>
+      <div id="views" class="chips">
+        <button data-view="iso">Iso</button>
+        <button data-view="front">Front</button>
+        <button data-view="top">Top</button>
+        <button data-view="arm">Arm</button>
+      </div>
+      <label class="slider">
+        <span>Explode <output id="explode-out">0&thinsp;mm</output></span>
+        <input type="range" id="explode" min="0" max="100" value="0">
+      </label>
+      <div class="switches">
+        <label class="switch"><input type="checkbox" id="wireframe"><span>Wireframe</span></label>
+        <label class="switch"><input type="checkbox" id="orbit"><span>Auto-orbit</span></label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Playback</h2>
+      <div class="chips">
+        <button id="play" class="primary">Play</button>
+        <button data-rpm="33.333" class="rpm on">33⅓</button>
+        <button data-rpm="45" class="rpm">45</button>
+      </div>
+      <p class="note" id="playback-note">Spins the platter and walks the arm from the lead-in groove to the run-out.</p>
+    </section>
+
+    <section>
+      <h2>Specification</h2>
+      <dl id="specs"></dl>
+    </section>
+  </aside>
+
+  <div id="readout"><span id="part-name">—</span></div>
+</div>
+
+<script type="module" src="viewer.js"></script>
+</body>
+</html>
