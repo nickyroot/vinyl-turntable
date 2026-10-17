@@ -115,6 +115,30 @@ def write_manifest(path: Path, model: Path) -> None:
     path.write_text(json.dumps(manifest, indent=2) + "\n")
 
 
+def write_web_assets(quality: str = "normal", groups: list[str] | None = None) -> Path:
+    """Build the model and write the GLB and manifest the viewer reads.
+
+    Separate from main() so the watcher can call it repeatedly inside one
+    process; importing build123d costs several seconds, and paying that on
+    every keystroke would make the loop useless.
+    """
+    WEB_MODELS.mkdir(parents=True, exist_ok=True)
+    model = build(DEFAULT, groups=groups)
+    out = WEB_MODELS / "turntable.glb"
+    lin, ang = QUALITY[quality]
+    export_gltf(
+        model,
+        out,
+        unit=Unit.MM,
+        binary=True,
+        linear_deflection=lin,
+        angular_deflection=ang,
+    )
+    retouch_materials(out)
+    write_manifest(WEB_MODELS / "manifest.json", out)
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -137,21 +161,10 @@ def main() -> int:
     print(f"\nbuilt {solids} solids in {time.perf_counter() - t0:.1f}s")
 
     if "glb" in args.formats:
-        lin, ang = QUALITY[args.quality]
-        out = WEB_MODELS / "turntable.glb"
         t = time.perf_counter()
-        export_gltf(
-            model,
-            out,
-            unit=Unit.MM,
-            binary=True,
-            linear_deflection=lin,
-            angular_deflection=ang,
-        )
-        retouch_materials(out)
+        out = write_web_assets(args.quality, args.groups)
         size = out.stat().st_size / 1024
         print(f"glb   {out.relative_to(ROOT)}  {size:.0f} kB  ({time.perf_counter() - t:.1f}s)")
-        write_manifest(WEB_MODELS / "manifest.json", out)
 
     if "step" in args.formats:
         out = DIST / "turntable.step"

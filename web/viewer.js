@@ -98,8 +98,11 @@ const state = {
   bounds: new THREE.Box3(),
 };
 
-const manifest = await fetch('models/manifest.json').then((r) => r.json());
-const gltf = await new GLTFLoader().loadAsync(`models/${manifest.model}`);
+const LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+const bust = LOCAL ? `?t=${Date.now()}` : '';
+
+const manifest = await fetch(`models/manifest.json${bust}`).then((r) => r.json());
+const gltf = await new GLTFLoader().loadAsync(`models/${manifest.model}${bust}`);
 const root = gltf.scene;
 
 root.traverse((o) => {
@@ -399,3 +402,22 @@ frame();
 
 // Handle for poking at the scene from the console.
 window.turntable = { scene, root, camera, controls, state, manifest, applyView };
+
+// ------------------------------------------------------------ live reload
+
+// `uv run watch` rewrites the manifest on every rebuild, so watching its
+// timestamp is enough to know when to pick up new geometry. Only while
+// developing: on a deployed site there is nothing to poll for.
+if (LOCAL) {
+  const stamp = manifest.generated;
+  setInterval(async () => {
+    try {
+      const fresh = await fetch(`models/manifest.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!fresh.ok) return;
+      const { generated } = await fresh.json();
+      if (generated && generated !== stamp) location.reload();
+    } catch {
+      // watcher restarting, or the file is mid-write; try again next tick
+    }
+  }, 1000);
+}

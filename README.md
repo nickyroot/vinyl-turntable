@@ -39,41 +39,91 @@ cd vinyl-turntable
 uv sync
 ```
 
-Build the model and write the web assets plus STEP and STL:
+## Designing
+
+One command gives you the whole loop:
 
 ```bash
-uv run export
+uv run watch
 ```
 
-Check the geometry is still sane:
+Open <http://localhost:4173>, edit anything under `src/turntable`, and save.
+The model rebuilds in about a second and the page reloads itself with the new
+geometry. The watcher also runs the geometry checks on every rebuild, so a
+change that breaks something says so immediately:
 
-```bash
-uv run python scripts/verify.py
+```
+[14:22:08] change detected
+  FAIL  platter clashes with rest_post (82 mm3)
+  rebuilt in  1.1s    1507 kB   1 CHECK(S) FAILED
 ```
 
-Serve the viewer:
+That is a real example: a 336 mm platter reaches the tonearm rest. A syntax
+error prints the offending line and the watcher keeps going, so a typo does
+not cost you a restart.
 
-```bash
-python3 -m http.server 4173 --directory web
-```
+The rebuild is quick because the watcher keeps one process alive and reloads
+only the turntable modules. Importing build123d takes about five seconds;
+paying that on every save would make the loop useless.
 
-## Changing the design
+### Where the dials are
 
-All the numbers are in [`src/turntable/params.py`](src/turntable/params.py).
-Edit a value, re-run `uv run export`, reload the page.
+Everything is in [`src/turntable/params.py`](src/turntable/params.py), grouped
+by assembly:
 
 ```python
-from turntable import TurntableParams, build
-from turntable.params import Platter
-
-big = TurntableParams(platter=Platter(radius=180.0, thickness=30.0))
-model = build(big)
+@dataclass(frozen=True)
+class Platter:
+    radius: float = 150.0
+    thickness: float = 20.0
+    clearance: float = 16.0         # platter underside above plinth top
 ```
+
+Some things worth trying:
+
+| Change | Where |
+| --- | --- |
+| Bigger platter | `Platter.radius` |
+| Taller or slimmer plinth | `Plinth.height`, `Plinth.corner_radius` |
+| Different arm geometry | `Tonearm.effective_length`, `pivot_to_spindle`, `offset_angle` |
+| Move the arm round the deck | `TurntableParams.arm_bearing` |
+| Open the dust cover | `DustCover.open_angle` — try `62` |
+| Colours and materials | `PALETTE` at the top of the file |
 
 Derived values are properties rather than constants, so the stack stays
 consistent: `platter_top` follows the plinth height and the platter clearance,
 the tonearm pillar is sized so the stylus meets the record, and the belt plane
-is taken from the sub-platter groove and reused for the motor pulley.
+is taken from the sub-platter groove and reused for the motor pulley. Change
+the plinth height and everything above it moves with it.
+
+### Driving it from Python
+
+```python
+from turntable import TurntableParams, build
+from turntable.params import Platter, Tonearm
+
+deck = TurntableParams(
+    platter=Platter(radius=180.0, thickness=30.0),
+    tonearm=Tonearm(effective_length=254.0, pivot_to_spindle=236.0),
+)
+model = build(deck)
+print(deck.describe())
+```
+
+`build()` takes a `groups=` list if you only want part of the assembly, and
+`turntable.assembly.part_registry()` gives you a name-to-builder map for
+looking at one part on its own.
+
+### Other commands
+
+```bash
+uv run export                 # GLB for the web, plus STEP and STL in dist/
+uv run export --quality high  # finer tessellation
+uv run verify                 # geometry checks on their own
+```
+
+Open `dist/turntable.step` in FreeCAD, Fusion or Onshape if you want the solid
+model rather than the mesh.
 
 ## Checks
 
@@ -113,6 +163,7 @@ src/turntable/
   assembly.py    the groups
   tracking.py    where the arm sits for a given groove radius
 scripts/
+  watch.py          rebuild on save and serve the viewer
   export_model.py   GLB for the web, STEP and STL for CAD
   verify.py         geometry checks
 web/               the viewer

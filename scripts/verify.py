@@ -70,7 +70,7 @@ def walk(node: Shape, prefix: str = "") -> dict[str, Shape]:
     return found
 
 
-def clashes(flat: dict[str, Shape]) -> int:
+def clashes(flat: dict[str, Shape], quiet: bool = False) -> int:
     """Flag solids that overlap when they have no business doing so.
 
     Bounding boxes come first because a real boolean on every pair of 46
@@ -98,12 +98,22 @@ def clashes(flat: dict[str, Shape]) -> int:
             if overlap > CLASH_VOLUME:
                 print(f"  FAIL  {name_a} clashes with {name_b} ({overlap:.0f} mm3)")
                 found += 1
-    if not found:
+    if not found and not quiet:
         print(f"  ok    no clashes among {len(items)} solids")
     return found
 
 
 def main() -> int:
+    return 1 if run_checks() else 0
+
+
+def run_checks(quiet: bool = False) -> int:
+    """Run every check and return how many failed.
+
+    Returns a count rather than printing and exiting so the watcher can call
+    it in-process after a rebuild.
+    """
+    say = (lambda *a: None) if quiet else print
     p = DEFAULT
     model = build(p)
     flat = {k.rsplit("/", 1)[-1]: v for k, v in walk(model).items()}
@@ -141,7 +151,8 @@ def main() -> int:
     for name, got, want in checks:
         ok = abs(got - want) <= TOL
         failures += not ok
-        print(f"  {'ok  ' if ok else 'FAIL'}  {name:26s} {got:8.2f}  expected {want:8.2f}")
+        line = f"  {'ok  ' if ok else 'FAIL'}  {name:26s} {got:8.2f}  expected {want:8.2f}"
+        say(line) if ok else print(line)
 
     # Containment: nothing outside the dust cover, feet flat on z = 0.
     cover = flat["cover_shell"].bounding_box()
@@ -156,7 +167,7 @@ def main() -> int:
             print(f"  FAIL  {name} pokes out of the dust cover")
             failures += 1
 
-    failures += clashes(flat)
+    failures += clashes(flat, quiet)
 
     bb = model.bounding_box()
     if abs(bb.min.Z) > TOL:
@@ -164,10 +175,10 @@ def main() -> int:
         failures += 1
     else:
         size = f"{bb.size.X:.0f} x {bb.size.Y:.0f} x {bb.size.Z:.0f} mm"
-        print(f"  ok    sits on z=0, overall {size}")
+        say(f"  ok    sits on z=0, overall {size}")
 
-    print("\n" + ("all checks passed" if not failures else f"{failures} check(s) failed"))
-    return 1 if failures else 0
+    say("\n" + ("all checks passed" if not failures else f"{failures} check(s) failed"))
+    return failures
 
 
 if __name__ == "__main__":

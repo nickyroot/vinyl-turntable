@@ -10,6 +10,8 @@ dependencies = [
 
 [project.scripts]
 export = "scripts.export_model:main"
+watch = "scripts.watch:main"
+verify = "scripts.verify:main"
 
 [build-system]
 requires = ["hatchling"]
