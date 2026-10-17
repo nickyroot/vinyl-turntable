@@ -59,12 +59,17 @@ the offset angle while the counterweight stays on the pivot axis.
 
 ## The chassis
 
-The cabinet is one solid slab, faceted after the LaCie Mobile Drive. It
-starts as a box and loses eight flat slices. A bevel tucks each bottom edge
-under, and each corner loses an inclined facet that begins as a point at
-the top corner and widens to `corner_cut` at the bottom face. Nothing comes
-off the top, which stays a perfect 453 x 360 rectangle with sharp edges, so
-in plan the deck is a clean rectangle and all the geometry is underneath.
+The cabinet is one solid slab, faceted after the LaCie Mobile Drive, and its
+profile is symmetrical about its mid-height. It starts as a box and loses
+sixteen flat slices: identical 45 degree bevels on the top and bottom
+edges, with a vertical wall band between them, and a vertical corner facet
+at each corner. Each corner facet is a six-sided diamond that starts as a
+point at the top-face corner, widens across the wall band and closes to a
+point at the bottom-face corner, so it is set entirely by the bevel and has
+no dial of its own.
+
+The top and bottom faces are matching perfect rectangles at the 1210's
+453 x 360, so the bevels add to the outline: the widest point is 481 x 388.
 
 ## What is modelled
 
@@ -137,7 +142,7 @@ Some things worth trying:
 | --- | --- |
 | Bigger platter | `Platter.radius` |
 | Taller or slimmer plinth | `Plinth.height`, `Plinth.corner_radius` |
-| Chassis facets | `Plinth.bevel_height`, `bevel_inset`, `corner_cut` |
+| Chassis facets | `Plinth.bevel` (45 deg, top and bottom alike) |
 | Reshape the S-bend | `Tonearm.s_curve` |
 | Different arm geometry | `Tonearm.effective_length`, `pivot_to_spindle`, `offset_angle` |
 | Move a control | `Controls.*_at` |
@@ -191,8 +196,9 @@ model rather than the mesh.
 - the cartridge stays within about 3 degrees of the groove tangent across
   the side, which is what catches a headshell kinked the wrong way
 - the rotor magnet keeps its air gap from the stator coils
-- the chassis top face is still a four-sided 453 x 360 rectangle, so no
-  facet has crept onto it
+- the chassis top and bottom faces are both four-sided 453 x 360
+  rectangles, and the slab mirrored about its mid-height leaves nothing
+  over, so the profile really is symmetrical
 - no two solids occupy the same space, apart from an allowlist of press
   fits
 

@@ -17,10 +17,10 @@ from __future__ import annotations
 from dataclasses import replace
 from math import hypot
 
-from build123d import Axis, Shape
+from build123d import Axis, Plane, Shape
 
 from turntable import DEFAULT, build
-from turntable.parts import dust_cover
+from turntable.parts import dust_cover, plinth_blank
 from turntable.tracking import as_minutes, tracking_error
 
 TOL = 0.25
@@ -70,6 +70,7 @@ CLASH_VOLUME = 1.0  # mm^3, enough to ignore coincident faces
 
 # Parts that live outside the cover by design.
 OUTSIDE_COVER = (
+    "chassis",
     "foot_",
     "cover",
     "hinge",
@@ -167,15 +168,21 @@ def run_checks(quiet: bool = False) -> int:
 
     checks.append(("platter top", flat["platter"].bounding_box().max.Z, p.platter_top))
 
-    # The chassis top face has to stay a perfect rectangle: every facet is
-    # meant to be below it, so it should still have exactly four sides.
+    # The chassis faces have to stay perfect rectangles, and the profile
+    # has to be symmetrical: mirror the slab about its mid-height and
+    # nothing should be left over.
     chassis = flat["chassis"]
-    top = chassis.faces().sort_by(Axis.Z)[-1].outer_wire()
+    faces = chassis.faces().sort_by(Axis.Z)
+    top, bottom = faces[-1].outer_wire(), faces[0].outer_wire()
     tb = top.bounding_box()
     checks.append(("chassis top face sides", len(top.edges()), 4))
+    checks.append(("chassis bottom face sides", len(bottom.edges()), 4))
     checks.append(("chassis top face length", tb.size.X, p.plinth.length))
     checks.append(("chassis top face depth", tb.size.Y, p.plinth.depth))
     checks.append(("chassis is one solid", len(chassis.solids()), 1))
+    blank = plinth_blank(p)
+    mid = Plane.XY.offset(p.foot.height + p.plinth.height / 2)
+    checks.append(("chassis asymmetry mm3", round((blank - blank.mirror(mid)).volume, 2), 0.0))
 
     failures = 0
     for name, got, want in checks:

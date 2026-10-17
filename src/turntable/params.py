@@ -47,18 +47,21 @@ PALETTE = {
 class Plinth:
     """One solid slab, faceted the way a LaCie Mobile Drive is.
 
-    The top face is a perfect rectangle with sharp edges and nothing is
-    taken off it. Every facet is underneath: a bevel tucks each bottom edge
-    in, and each corner loses an inclined facet that starts as a point at
-    the top corner and widens to `corner_cut` at the bottom face.
+    The profile is symmetrical about its mid-height: the top and bottom
+    edges take identical 45 degree bevels with a vertical wall band
+    between them. Each corner is a vertical diamond facet that starts as a
+    point at the top-face corner, widens across the wall band and closes
+    to a point at the bottom-face corner, so the corner is set entirely by
+    the bevel and has no dial of its own.
+
+    `length` and `depth` are the top face, the 1210's working surface; the
+    bevels add to the outline, so the widest point is length + 2 * bevel.
     """
 
     length: float = 453.0
     depth: float = 360.0
     height: float = 56.0
-    bevel_height: float = 24.0      # how far up the wall the bottom bevel reaches
-    bevel_inset: float = 11.0       # how far in it tucks at the bottom face
-    corner_cut: float = 56.0        # corner facet width at the bottom, along each edge
+    bevel: float = 14.0             # 45 deg, top and bottom alike
 
 
 @dataclass(frozen=True)
@@ -67,7 +70,7 @@ class Foot:
 
     radius: float = 22.0
     height: float = 26.0
-    inset: float = 50.0             # clear of the bevels and corner facets
+    inset: float = 36.0
     collar: float = 5.0             # the gold band around the base
 
 

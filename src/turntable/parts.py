@@ -64,36 +64,38 @@ def _trim(body: Shape, a, b, c, keep) -> Shape:
     return split(body, bisect_by=Plane(origin=a, z_dir=normal), keep=Keep.BOTTOM)
 
 
-def plinth(p: TurntableParams) -> Shape:
-    """A box with eight flat slices taken off it.
+def plinth_blank(p: TurntableParams) -> Shape:
+    """The faceted slab on its own: a box with sixteen flat slices taken off.
 
-    Four bevels along the bottom edges, then four inclined corner facets,
-    each a plane through a top corner and two points `corner_cut` back
-    along the bottom edges. Because every cut is a plane, the facets meet
-    in straight creases and the top face is untouched.
+    Eight bevels, the top and bottom edges as mirror images, then four
+    vertical corner planes, each through a top-face corner at 45 degrees.
+    Every cut is a plane, so the facets meet in straight creases, the top
+    and bottom faces are matching perfect rectangles, and each corner facet
+    closes to a point at both ends.
     """
     s = p.plinth
     z0, z1 = p.foot.height, p.plinth_top
-    x, y = s.length / 2, s.depth / 2
-    zb = z0 + s.bevel_height
-    inset, cut = s.bevel_inset, s.corner_cut
+    x, y, b = s.length / 2, s.depth / 2, s.bevel
     centre = (0.0, 0.0, (z0 + z1) / 2)
 
-    body = Pos(Z=z0) * Box(s.length, s.depth, s.height, align=BOTTOM)
-    for side in (-1, 1):
-        front_back = ((-x, side * y, zb), (x, side * y, zb), (0, side * (y - inset), z0))
-        left_right = ((side * x, -y, zb), (side * x, y, zb), (side * (x - inset), 0, z0))
-        body = _trim(body, *front_back, centre)
-        body = _trim(body, *left_right, centre)
+    body = Pos(Z=z0) * Box(s.length + 2 * b, s.depth + 2 * b, s.height, align=BOTTOM)
+    for fz, wz in ((z1, z1 - b), (z0, z0 + b)):  # face height, wall height
+        for side in (-1, 1):
+            front_back = ((-x, side * y, fz), (x, side * y, fz), (0, side * (y + b), wz))
+            left_right = ((side * x, -y, fz), (side * x, y, fz), (side * (x + b), 0, wz))
+            body = _trim(body, *front_back, centre)
+            body = _trim(body, *left_right, centre)
     for sx in (-1, 1):
         for sy in (-1, 1):
-            body = _trim(
-                body,
-                (sx * x, sy * y, z1),
-                (sx * (x - cut), sy * y, z0),
-                (sx * x, sy * (y - cut), z0),
-                centre,
-            )
+            corner = ((sx * x, sy * y, z0), (sx * x, sy * y, z1), (sx * (x - b), sy * (y + b), z0))
+            body = _trim(body, *corner, centre)
+    return body
+
+
+def plinth(p: TurntableParams) -> Shape:
+    """The chassis: the faceted blank, with its bores and wells."""
+    z1 = p.plinth_top
+    body = plinth_blank(p)
 
     # Bores and wells for the parts that sit in the top face.
     body -= Pos(*p.spindle, z1 - 15) * Cylinder(p.drive.hub_radius, 16, align=BOTTOM)
@@ -126,12 +128,12 @@ def feet(p: TurntableParams) -> Shape:
 def rear_panel(p: TurntableParams) -> Shape:
     """Captive phono leads and the earthing post, out of the back wall.
 
-    They leave from the vertical band above the bevel, so the slab keeps
-    its clean underside.
+    They leave from the middle of the vertical wall band, between the two
+    bevels, so the facets stay clean.
     """
     s = p.plinth
-    y = s.depth / 2
-    z = p.foot.height + s.bevel_height + (s.height - s.bevel_height) / 2
+    y = s.depth / 2 + s.bevel
+    z = p.foot.height + s.height / 2
     out = []
 
     for i, dx in enumerate((74, 118)):
