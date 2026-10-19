@@ -26,7 +26,6 @@ PALETTE = {
     # The 1210's cabinet: satin black die-cast top on a heavy rubber base.
     "top_plate": Finish((0.13, 0.13, 0.14, 1.0)),
     "base": Finish((0.07, 0.07, 0.075, 1.0)),
-    "aluminium": Finish((0.70, 0.71, 0.73, 1.0)),
     # Matt black: the arm, the buttons, the pitch slider and the platter.
     "matt_black": Finish((0.055, 0.055, 0.06, 1.0)),
     "steel": Finish((0.55, 0.57, 0.60, 1.0)),
@@ -37,7 +36,6 @@ PALETTE = {
     "label": Finish((0.80, 0.26, 0.18, 1.0)),
     "acrylic": Finish((0.70, 0.78, 0.82, 0.20)),
     "cartridge": Finish((0.62, 0.14, 0.12, 1.0)),
-    "strobe": Finish((0.62, 0.63, 0.64, 1.0)),
     "lamp": Finish((0.95, 0.35, 0.20, 1.0)),
     "led": Finish((0.30, 0.85, 0.40, 1.0)),
     "copper": Finish((0.78, 0.45, 0.25, 1.0)),

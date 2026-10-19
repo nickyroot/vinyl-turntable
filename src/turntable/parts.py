@@ -268,7 +268,7 @@ def strobe_dots(p: TurntableParams) -> Shape:
             a = 360 * i / pl.strobe_per_row
             mark = Pos(pl.radius + 0.2, 0, z) * Box(0.6, dot, dot)
             marks.append(Rot(Z=a) * mark)
-    return finish(Pos(*p.spindle) * Compound(marks), "strobe_dots", "strobe")
+    return finish(Pos(*p.spindle) * Compound(marks), "strobe_dots", "matt_black")
 
 
 def mat(p: TurntableParams) -> Shape:
@@ -351,7 +351,7 @@ def target_light(p: TurntableParams) -> Shape:
     out = []
     barrel = Cylinder(c.target_radius, c.target_height, align=BOTTOM)
     barrel = chamfer(barrel.edges().group_by(Axis.Z)[-1], 1.2)
-    out.append(finish(Pos(*c.target_at, z) * barrel, "target_light", "aluminium"))
+    out.append(finish(Pos(*c.target_at, z) * barrel, "target_light", "matt_black"))
     lens = Cylinder(c.target_radius - 2, 2.5, align=BOTTOM)
     out.append(
         finish(Pos(*c.target_at, z + c.target_height - 1) * lens, "target_lens", "lamp")
@@ -366,7 +366,7 @@ def adapter(p: TurntableParams) -> Shape:
     body = Cylinder(c.adapter_radius, 5, align=BOTTOM)
     body = chamfer(body.edges().group_by(Axis.Z)[-1], 1.2)
     body -= Pos(Z=-1) * Cylinder(3.6, 7, align=BOTTOM)
-    return finish(Pos(*c.adapter_at, z) * body, "adapter_45", "aluminium")
+    return finish(Pos(*c.adapter_at, z) * body, "adapter_45", "matt_black")
 
 
 # ------------------------------------------------------------------- tonearm
